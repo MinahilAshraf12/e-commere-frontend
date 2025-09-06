@@ -65,7 +65,7 @@ export default function Home() {
     featuredProducts: 0,
     categoryStats: []
   })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   // Fetch data on component mount
