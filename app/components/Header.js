@@ -44,6 +44,11 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMenuOpen(false)
+  }, [pathname])
+
   const isActive = (href) => {
     if (href === '/') {
       return pathname === '/'
@@ -73,23 +78,23 @@ const Header = () => {
       <div className="relative" ref={profileRef}>
         <button
           onClick={() => setIsProfileOpen(!isProfileOpen)}
-          className="flex items-center space-x-2 p-2 rounded-full bg-gradient-to-br from-pink-50 to-rose-50 text-gray-700 hover:from-pink-100 hover:to-rose-100 hover:text-pink-600 transition-all duration-300 shadow-md hover:shadow-lg"
+          className="flex items-center space-x-1 sm:space-x-2 p-2 rounded-full bg-gradient-to-br from-pink-50 to-rose-50 text-gray-700 hover:from-pink-100 hover:to-rose-100 hover:text-pink-600 transition-all duration-300 shadow-md hover:shadow-lg"
         >
-          <div className="w-8 h-8 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center flex-shrink-0">
             {user.avatar ? (
               <img 
                 src={user.avatar} 
                 alt={user.name} 
-                className="w-8 h-8 rounded-full object-cover"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover"
               />
             ) : (
-              <User className="w-5 h-5 text-white" />
+              <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             )}
           </div>
-          <span className="hidden md:block text-sm font-medium max-w-20 truncate">
+          <span className="hidden sm:block text-sm font-medium max-w-16 sm:max-w-20 truncate">
             {user.name}
           </span>
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
         </button>
 
         {/* Profile Dropdown */}
@@ -130,15 +135,6 @@ const Header = () => {
                 <Heart className="w-4 h-4 mr-3" />
                 My Wishlist ({wishlistCount})
               </Link>
-              
-              {/* <Link
-                href="/settings"
-                onClick={() => setIsProfileOpen(false)}
-                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors duration-200"
-              >
-                <Settings className="w-4 h-4 mr-3" />
-                Settings
-              </Link> */}
             </div>
             
             <div className="border-t border-pink-100 pt-2">
@@ -158,34 +154,37 @@ const Header = () => {
 
   return (
     <header className="bg-white shadow-xl sticky top-0 z-50 border-b border-pink-100">
-      {/* Top bar */}
-      <div className="bg-gradient-to-r from-pink-500 via-pink-600 to-rose-500 text-white text-sm py-3">
-        <div className="container mx-auto px-4 text-center">
-          <p className="font-medium">✨ Free shipping on orders over $75 | 30-day return policy ✨</p>
+      {/* Top bar - hide on very small screens */}
+      <div className="bg-gradient-to-r from-pink-500 via-pink-600 to-rose-500 text-white text-xs sm:text-sm py-2 sm:py-3">
+        <div className="container mx-auto px-2 sm:px-4 text-center">
+          <p className="font-medium">
+            <span className="hidden sm:inline">✨ Free shipping on orders over $75 | 30-day return policy ✨</span>
+            <span className="sm:hidden">✨ Free shipping over $75 ✨</span>
+          </p>
         </div>
       </div>
 
       {/* Main header */}
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between py-5">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3 group">
+      <div className="container mx-auto px-2 sm:px-4">
+        <div className="flex items-center justify-between py-3 sm:py-5">
+          {/* Logo - responsive sizing */}
+          <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group flex-shrink-0">
             <div className="relative">
-              <div className="w-12 h-12 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
-                <span className="text-white font-bold text-xl">P</span>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                <span className="text-white font-bold text-lg sm:text-xl">P</span>
               </div>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-300 to-yellow-400 rounded-full animate-pulse"></div>
+              <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-br from-yellow-300 to-yellow-400 rounded-full animate-pulse"></div>
             </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 bg-clip-text text-transparent">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 bg-clip-text text-transparent truncate">
                 Pink Dreams
               </h1>
-              <p className="text-xs text-gray-500 -mt-1">Fashion & Style</p>
+              <p className="text-xs text-gray-500 -mt-1 hidden sm:block">Fashion & Style</p>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-10">
+          <nav className="hidden lg:flex items-center space-x-8 xl:space-x-10">
             {navItems.map((item) => (
               <Link 
                 key={item.name} 
@@ -204,23 +203,24 @@ const Header = () => {
             ))}
           </nav>
 
-          {/* Right side icons */}
-          <div className="flex items-center space-x-6">
-            <Link href="/wishlist" className="relative group">
-              <div className={`p-3 rounded-full transition-all duration-300 shadow-md hover:shadow-lg ${
+          {/* Right side icons - improved mobile spacing */}
+          <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6 flex-shrink-0">
+            {/* Wishlist - hide icon on very small screens */}
+            <Link href="/wishlist" className="relative group hidden xs:block">
+              <div className={`p-2 sm:p-3 rounded-full transition-all duration-300 shadow-md hover:shadow-lg ${
                 isActive('/wishlist')
                   ? 'bg-gradient-to-br from-pink-100 to-rose-100 text-pink-600'
                   : 'bg-gradient-to-br from-pink-50 to-rose-50 text-gray-700 hover:from-pink-100 hover:to-rose-100 hover:text-pink-600'
               }`}>
-                <Heart className={`w-5 h-5 ${wishlistLoading ? 'animate-pulse' : ''}`} />
+                <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${wishlistLoading ? 'animate-pulse' : ''}`} />
               </div>
               {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-lg animate-in slide-in-from-top-2 duration-300">
-                  {wishlistCount}
+                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center font-bold shadow-lg animate-in slide-in-from-top-2 duration-300">
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
                 </span>
               )}
               {user?.isTemp && wishlistCount > 0 && (
-                <span className="absolute -bottom-1 -right-1 bg-yellow-400 text-yellow-800 text-xs rounded-full w-3 h-3 flex items-center justify-center font-bold shadow-sm">
+                <span className="absolute -bottom-1 -right-1 bg-yellow-400 text-yellow-800 text-xs rounded-full w-2.5 h-2.5 sm:w-3 sm:h-3 flex items-center justify-center font-bold shadow-sm">
                   !
                 </span>
               )}
@@ -231,44 +231,40 @@ const Header = () => {
               <UserProfileDropdown />
             ) : (
               <button onClick={openLoginModal} className="relative group">
-                <div className={`p-3 rounded-full transition-all duration-300 shadow-md hover:shadow-lg ${
+                <div className={`p-2 sm:p-3 rounded-full transition-all duration-300 shadow-md hover:shadow-lg ${
                   isActive('/auth') || isActive('/login') || isActive('/profile')
                     ? 'bg-gradient-to-br from-pink-100 to-rose-100 text-pink-600'
                     : 'bg-gradient-to-br from-pink-50 to-rose-50 text-gray-700 hover:from-pink-100 hover:to-rose-100 hover:text-pink-600'
                 }`}>
-                  <User className="w-5 h-5" />
+                  <User className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </button>
             )}
 
+            {/* Cart */}
             <Link href="/cart" className="relative group">
-              <div className={`p-3 rounded-full transition-all duration-300 shadow-md hover:shadow-lg ${
+              <div className={`p-2 sm:p-3 rounded-full transition-all duration-300 shadow-md hover:shadow-lg ${
                 isActive('/cart')
                   ? 'bg-gradient-to-br from-pink-100 to-rose-100 text-pink-600'
                   : 'bg-gradient-to-br from-pink-50 to-rose-50 text-gray-700 hover:from-pink-100 hover:to-rose-100 hover:text-pink-600'
               }`}>
-                <ShoppingBag className={`w-5 h-5 ${cartLoading ? 'animate-pulse' : ''}`} />
+                <ShoppingBag className={`w-4 h-4 sm:w-5 sm:h-5 ${cartLoading ? 'animate-pulse' : ''}`} />
               </div>
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-lg">
-                  {cartCount}
+                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center font-bold shadow-lg">
+                  {cartCount > 99 ? '99+' : cartCount}
                 </span>
               )}
-              {/* Show indicator for guest users to let them know cart is temporary */}
-              {/* {!user && cartCount > 0 && (
-                <span className="absolute -bottom-1 -left-1 bg-yellow-400 text-yellow-800 text-xs rounded-full w-3 h-3 flex items-center justify-center font-bold shadow-sm" title="Cart items will be lost when session ends. Sign in to save your cart.">
-                  ⚠
-                </span>
-              )} */}
             </Link>
 
             {/* Mobile menu button */}
             <button
               className="lg:hidden relative group"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle mobile menu"
             >
-              <div className="p-3 rounded-full bg-gradient-to-br from-pink-50 to-rose-50 text-gray-700 hover:from-pink-100 hover:to-rose-100 hover:text-pink-600 transition-all duration-300 shadow-md hover:shadow-lg">
-                {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <div className="p-2 sm:p-3 rounded-full bg-gradient-to-br from-pink-50 to-rose-50 text-gray-700 hover:from-pink-100 hover:to-rose-100 hover:text-pink-600 transition-all duration-300 shadow-md hover:shadow-lg">
+                {isMenuOpen ? <X className="w-4 h-4 sm:w-5 sm:h-5" /> : <Menu className="w-4 h-4 sm:w-5 sm:h-5" />}
               </div>
             </button>
           </div>
@@ -308,7 +304,7 @@ const Header = () => {
                 <div className="flex items-center space-x-1">
                   {cartCount > 0 && (
                     <span className="bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
-                      {cartCount}
+                      {cartCount > 99 ? '99+' : cartCount}
                     </span>
                   )}
                   {!user && cartCount > 0 && (
@@ -329,18 +325,25 @@ const Header = () => {
                   <Heart className="w-5 h-5 mr-3" />
                   <span className="text-lg font-medium">Wishlist</span>
                 </div>
-                {wishlistCount > 0 && (
-                  <span className="bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
-                    {wishlistCount}
-                  </span>
-                )}
+                <div className="flex items-center space-x-1">
+                  {wishlistCount > 0 && (
+                    <span className="bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                      {wishlistCount > 99 ? '99+' : wishlistCount}
+                    </span>
+                  )}
+                  {user?.isTemp && wishlistCount > 0 && (
+                    <span className="bg-yellow-400 text-yellow-800 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold" title="Guest wishlist - Sign in to save">
+                      ⚠
+                    </span>
+                  )}
+                </div>
               </Link>
 
               {/* Mobile User Section */}
               {user ? (
                 <div className="border-t border-pink-100 pt-4 mt-4">
                   <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center flex-shrink-0">
                       {user.avatar ? (
                         <img 
                           src={user.avatar} 
@@ -351,9 +354,9 @@ const Header = () => {
                         <User className="w-6 h-6 text-white" />
                       )}
                     </div>
-                    <div>
-                      <div className="text-base font-medium text-gray-800">{user.name}</div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-base font-medium text-gray-800 truncate">{user.name}</div>
+                      <div className="text-sm text-gray-500 truncate">{user.email}</div>
                       {user.isTemp && (
                         <div className="text-xs text-yellow-600">⚠️ Guest User - Sign in to save data</div>
                       )}
@@ -449,6 +452,13 @@ const Header = () => {
         
         .duration-300 {
           animation-duration: 300ms;
+        }
+
+        /* Custom breakpoint for extra small screens */
+        @media (min-width: 375px) {
+          .xs\:block {
+            display: block;
+          }
         }
       `}</style>
     </header>
