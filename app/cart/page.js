@@ -8,6 +8,8 @@ import Header from '../components/Header'
 import Footer from '../components/Footer'
 import { useCart } from '../context/CartContext' // Import from CartContext
 import { toast } from 'react-toastify'
+import { getImageSrc, handleImageError } from '../utils/imageUtils'
+
 
 export default function CartPage() {
   const { 
@@ -286,10 +288,11 @@ export default function CartPage() {
                         {/* Product Image */}
                         <div className="w-20 h-20 bg-gradient-to-br from-pink-100 to-pink-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                           {item.image ? (
-                            <img
-                              src={item.image}
+                           <img
+                              src={getImageSrc(item.image)}
                               alt={item.name}
                               className="w-full h-full object-cover"
+                              onError={handleImageError}
                               loading="lazy"
                             />
                           ) : (

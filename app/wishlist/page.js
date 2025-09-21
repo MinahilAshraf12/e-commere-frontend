@@ -7,6 +7,7 @@ import Header from '../components/Header'
 import Footer from '../components/Footer'
 import { useWishlist } from '../context/WishlistContext'
 import { toast } from 'react-toastify'
+import { getImageSrc, handleImageError } from '../utils/imageUtils'
 
 // API Configuration
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
@@ -52,8 +53,7 @@ export default function WishlistPage() {
         
         localStorage.setItem('cart', JSON.stringify(existingCart))
         window.dispatchEvent(new Event('cartUpdated'))
-        // alert(`${product.name} added to cart!`)
-         toast.success(`${product.name} added to cart!`)
+        toast.success(`${product.name} added to cart!`)
         return
       }
 
@@ -74,13 +74,13 @@ export default function WishlistPage() {
 
       if (data.success) {
         window.dispatchEvent(new Event('cartUpdated'))
-        alert(`${product.name} added to cart!`)
+        toast.success(`${product.name} added to cart!`)
       } else {
-        alert(data.message || 'Failed to add item to cart')
+        toast.error(data.message || 'Failed to add item to cart')
       }
     } catch (error) {
       console.error('Error adding to cart:', error)
-      alert('Failed to add item to cart. Please try again.')
+      toast.error('Failed to add item to cart. Please try again.')
     }
   }
 
@@ -94,13 +94,13 @@ export default function WishlistPage() {
       
       if (result.success) {
         const movedCount = result.movedCount || result.movedItems?.length || productIds.length
-        alert(`${movedCount} items moved to cart!`)
+        toast.success(`${movedCount} items moved to cart!`)
       } else {
-        alert(result.error || 'Failed to move items to cart')
+        toast.error(result.error || 'Failed to move items to cart')
       }
     } catch (error) {
       console.error('Error adding all to cart:', error)
-      alert('Failed to move items to cart. Please try again.')
+      toast.error('Failed to move items to cart. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -113,7 +113,7 @@ export default function WishlistPage() {
         await clearWishlist()
       } catch (error) {
         console.error('Error clearing wishlist:', error)
-        alert('Failed to clear wishlist. Please try again.')
+        toast.error('Failed to clear wishlist. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -125,7 +125,7 @@ export default function WishlistPage() {
       await removeFromWishlist(productId)
     } catch (error) {
       console.error('Error removing item:', error)
-      alert('Failed to remove item. Please try again.')
+      toast.error('Failed to remove item. Please try again.')
     }
   }
 
@@ -282,9 +282,10 @@ export default function WishlistPage() {
                   <div className="relative h-48 bg-gradient-to-br from-pink-100 to-pink-200 overflow-hidden">
                     {product.image ? (
                       <img
-                        src={product.image}
+                        src={getImageSrc(product.image)}
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={handleImageError}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">

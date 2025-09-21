@@ -12,6 +12,8 @@ import { useAuth } from '../context/AuthContext'
 import { StripeProvider } from '../context/StripeContext'
 import { PayPalProvider } from '../context/PayPalContext'
 import { toast } from 'react-toastify'
+import { getImageSrc, handleImageError } from '../utils/imageUtils'
+
 
 function CheckoutContent() {
     const router = useRouter()
@@ -166,10 +168,11 @@ function CheckoutContent() {
                                         <div key={`${item.id}-${index}`} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg border">
                                             <div className="w-20 h-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                                                 {item.image ? (
-                                                    <img 
-                                                        src={item.image} 
+                                                     <img 
+                                                        src={getImageSrc(item.image)}
                                                         alt={item.name}
                                                         className="w-full h-full object-cover"
+                                                        onError={handleImageError}
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center">

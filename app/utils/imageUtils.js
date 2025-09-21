@@ -1,9 +1,22 @@
 // utils/imageUtils.js
-// Create this file to handle all image URL scenarios from your admin panel
+import { useState, useEffect } from 'react'
 
-export const getImageSrc = (imageSrc, fallback = '/placeholder-product.jpg') => {
+const FALLBACK_IMAGE = 'https://placehold.co/400x400/FFB6C1/FFFFFF?text=Pink+Dreams'
+const ERROR_IMAGE = 'https://placehold.co/400x400/FFB6C1/FFFFFF?text=No+Image'
+
+export const getImageSrc = (imageSrc, fallback = FALLBACK_IMAGE) => {
   // Return fallback if no image source
   if (!imageSrc) return fallback
+  
+  const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+  
+  // Handle old Railway URLs - replace with new Render URL
+  if (imageSrc.includes('railway.app')) {
+    const filename = imageSrc.split('/images/')[1]
+    if (filename) {
+      return `${baseURL}/images/${filename}`
+    }
+  }
   
   // If it's already a full URL (http or https), return as is
   if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
@@ -12,25 +25,33 @@ export const getImageSrc = (imageSrc, fallback = '/placeholder-product.jpg') => 
   
   // If it's a relative path starting with /images/, construct the full URL
   if (imageSrc.startsWith('/images/')) {
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${imageSrc}`
+    return `${baseURL}${imageSrc}`
   }
   
   // If it's just a filename (like "product_1752850601329.png"), construct the full URL
-  if (!imageSrc.includes('/') && (imageSrc.includes('.jpg') || imageSrc.includes('.png') || imageSrc.includes('.jpeg') || imageSrc.includes('.webp'))) {
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/images/${imageSrc}`
+  if (!imageSrc.includes('/') && /\.(jpg|jpeg|png|gif|webp)$/i.test(imageSrc)) {
+    return `${baseURL}/images/${imageSrc}`
   }
   
   // If it starts with 'images/' (without leading slash), add the base URL
   if (imageSrc.startsWith('images/')) {
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/${imageSrc}`
+    return `${baseURL}/${imageSrc}`
   }
   
   // Default case - assume it's a relative path and prepend base URL
-  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/${imageSrc}`
+  return `${baseURL}/${imageSrc}`
 }
 
-// Optional: Create a React hook for image loading with error handling
-export const useImageWithFallback = (src, fallback = '/placeholder-product.jpg') => {
+// Image error handler
+export const handleImageError = (e, fallbackImage = ERROR_IMAGE) => {
+  if (e.target.src !== fallbackImage) {
+    e.target.onerror = null // Prevent infinite loop
+    e.target.src = fallbackImage
+  }
+}
+
+// React hook for image loading with error handling
+export const useImageWithFallback = (src, fallback = FALLBACK_IMAGE) => {
   const [imageSrc, setImageSrc] = useState(getImageSrc(src, fallback))
   const [isError, setIsError] = useState(false)
   
@@ -42,9 +63,12 @@ export const useImageWithFallback = (src, fallback = '/placeholder-product.jpg')
   const handleError = () => {
     if (!isError) {
       setIsError(true)
-      setImageSrc(fallback)
+      setImageSrc(ERROR_IMAGE)
     }
   }
   
   return { imageSrc, handleError, isError }
 }
+
+// Export constants
+export { FALLBACK_IMAGE, ERROR_IMAGE }
