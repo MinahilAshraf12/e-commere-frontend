@@ -6,27 +6,42 @@ import Link from 'next/link'
 import { useWishlist } from '../context/WishlistContext'
 import { useCart } from '../context/CartContext'
 
-// Image utility function (you can move this to utils/imageUtils.js if preferred)
-const getImageSrc = (imageSrc, fallback = '/placeholder-product.jpg') => {
+// Fallback image URL
+const FALLBACK_IMAGE = 'https://placehold.co/400x400/FFB6C1/FFFFFF?text=Pink+Dreams'
+const ERROR_IMAGE = 'https://placehold.co/400x400/FFB6C1/FFFFFF?text=No+Image'
+
+// Image utility function
+const getImageSrc = (imageSrc, fallback = FALLBACK_IMAGE) => {
   if (!imageSrc) return fallback
   
+  const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+  
+  // If URL contains old Railway domain, replace it
+  if (imageSrc.includes('railway.app')) {
+    const filename = imageSrc.split('/images/')[1]
+    if (filename) {
+      return `${baseURL}/images/${filename}`
+    }
+  }
+  
+  // If already a full URL with correct domain, return as is
   if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
     return imageSrc
   }
   
   if (imageSrc.startsWith('/images/')) {
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${imageSrc}`
+    return `${baseURL}${imageSrc}`
   }
   
-  if (!imageSrc.includes('/') && (imageSrc.includes('.jpg') || imageSrc.includes('.png') || imageSrc.includes('.jpeg') || imageSrc.includes('.webp'))) {
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/images/${imageSrc}`
+  if (!imageSrc.includes('/') && /\.(jpg|jpeg|png|gif|webp)$/i.test(imageSrc)) {
+    return `${baseURL}/images/${imageSrc}`
   }
   
   if (imageSrc.startsWith('images/')) {
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/${imageSrc}`
+    return `${baseURL}/${imageSrc}`
   }
   
-  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/${imageSrc}`
+  return `${baseURL}/${imageSrc}`
 }
 
 const ProductCard = ({ product }) => {
@@ -34,7 +49,7 @@ const ProductCard = ({ product }) => {
   const [addingToCart, setAddingToCart] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [imageError, setImageError] = useState(false)
-  const [imageSrc, setImageSrc] = useState('')
+  const [imageSrc, setImageSrc] = useState(FALLBACK_IMAGE)
   
   const { toggleWishlist, isInWishlist } = useWishlist()
   const { addToCart, isInCart, getItemQuantity } = useCart()
@@ -44,8 +59,13 @@ const ProductCard = ({ product }) => {
   // Set up image source
   useEffect(() => {
     const mainImage = product.image || (product.images && product.images[0]) || null
-    setImageSrc(getImageSrc(mainImage))
-    setImageError(false)
+    if (mainImage) {
+      setImageSrc(getImageSrc(mainImage))
+      setImageError(false)
+    } else {
+      setImageSrc(FALLBACK_IMAGE)
+      setImageError(true)
+    }
   }, [product])
 
   // Calculate discount percentage
@@ -105,8 +125,9 @@ const ProductCard = ({ product }) => {
 
   const handleImageError = () => {
     if (!imageError) {
+      console.error('Image failed to load:', imageSrc)
       setImageError(true)
-      setImageSrc('/placeholder-product.jpg')
+      setImageSrc(ERROR_IMAGE)
     }
   }
 
@@ -123,10 +144,10 @@ const ProductCard = ({ product }) => {
       <div className="relative overflow-hidden rounded-t-3xl">
         <Link href={productUrl}>
           <div className="aspect-[4/5] relative cursor-pointer">
-            {imageSrc && !imageError ? (
+            {!imageError ? (
               <img
                 src={imageSrc}
-                alt={product.name}
+                alt={product.name || 'Product'}
                 className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                 onError={handleImageError}
                 loading="lazy"
@@ -135,7 +156,7 @@ const ProductCard = ({ product }) => {
               <div className="w-full h-full bg-gradient-to-br from-pink-50 to-rose-50 flex items-center justify-center">
                 <div className="text-center">
                   <ShoppingBag className="w-12 h-12 text-pink-300 mx-auto mb-2" />
-                  <span className="text-pink-400 text-sm font-medium">No Image</span>
+                  <span className="text-pink-400 text-sm font-medium">No Image Available</span>
                 </div>
               </div>
             )}
@@ -240,31 +261,6 @@ const ProductCard = ({ product }) => {
           </h3>
         </Link>
 
-        {product.brand && false && (
-          <div className="mb-2">
-            <span className="text-xs text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded-lg">
-              {product.brand}
-            </span>
-          </div>
-        )}
-
-        {false && (
-          <div className="flex items-center space-x-1 mb-2">
-            <div className="flex items-center">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <svg 
-                  key={star} 
-                  className="w-3 h-3 fill-yellow-400 text-yellow-400" 
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
-            </div>
-            <span className="text-xs text-gray-500">(4.8)</span>
-          </div>
-        )}
-
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
             ${typeof product.new_price === 'number' ? product.new_price.toFixed(2) : product.new_price}
@@ -275,54 +271,6 @@ const ProductCard = ({ product }) => {
             </span>
           )}
         </div>
-
-        {product.colors && product.colors.length > 0 && false && (
-          <div className="flex items-center space-x-1 mb-3">
-            <span className="text-xs text-gray-500">Colors:</span>
-            <div className="flex space-x-1">
-              {product.colors.slice(0, 3).map((color, index) => (
-                <div
-                  key={index}
-                  className="w-3 h-3 rounded-full border border-gray-300"
-                  style={{ backgroundColor: color.toLowerCase() }}
-                  title={color}
-                />
-              ))}
-              {product.colors.length > 3 && (
-                <span className="text-xs text-gray-400">
-                  +{product.colors.length - 3}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {product.stock_quantity !== undefined && false && (
-          <div className="mb-3">
-            {product.stock_quantity > 0 ? (
-              <span className={`text-xs font-medium flex items-center gap-1 ${
-                product.stock_quantity <= (product.low_stock_threshold || 10) 
-                  ? 'text-orange-600' 
-                  : 'text-green-600'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${
-                  product.stock_quantity <= (product.low_stock_threshold || 10) 
-                    ? 'bg-orange-500' 
-                    : 'bg-green-500'
-                }`}></div>
-                {product.stock_quantity <= (product.low_stock_threshold || 10) 
-                  ? `Only ${product.stock_quantity} left!` 
-                  : 'In Stock'
-                }
-              </span>
-            ) : (
-              <span className="text-xs text-red-600 font-medium flex items-center gap-1">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                Out of Stock
-              </span>
-            )}
-          </div>
-        )}
 
         <button
           onClick={handleAddToCart}

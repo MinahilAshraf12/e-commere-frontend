@@ -374,23 +374,33 @@ export default function ProductDetail() {
     }
   }
 
-  const getImageSrc = (imageSrc) => {
-    if (!imageSrc) return '/placeholder-product.jpg'
-    
-    if (imageSrc.startsWith('http')) {
-      return imageSrc
+const getImageSrc = (imageSrc) => {
+  if (!imageSrc) return 'https://placehold.co/400x400/FFB6C1/FFFFFF?text=Pink+Dreams'
+  
+  const baseURL = API_URL || 'http://localhost:4000'
+  
+  // Handle old Railway URLs
+  if (imageSrc.includes('railway.app')) {
+    const filename = imageSrc.split('/images/')[1]
+    if (filename) {
+      return `${baseURL}/images/${filename}`
     }
-    
-    if (imageSrc.startsWith('/images/')) {
-      return `${API_URL}${imageSrc}`;
-    }
-
-    if (!imageSrc.includes('/')) {
-      return `${API_URL}/images/${imageSrc}`;
-    }
-    
+  }
+  
+  if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
     return imageSrc
   }
+  
+  if (imageSrc.startsWith('/images/')) {
+    return `${baseURL}${imageSrc}`
+  }
+
+  if (!imageSrc.includes('/') && /\.(jpg|jpeg|png|gif|webp)$/i.test(imageSrc)) {
+    return `${baseURL}/images/${imageSrc}`
+  }
+  
+  return imageSrc
+}
 
   const getHighResSrc = (imageSrc) => {
     const normalSrc = getImageSrc(imageSrc)
@@ -537,9 +547,10 @@ export default function ProductDetail() {
                           src={getImageSrc(image)}
                           alt={`${product.name} ${index + 1}`}
                           className="w-full h-full object-cover select-none"
-                          onError={(e) => {
-                            e.target.src = '/placeholder-product.jpg'
-                          }}
+                         onError={(e) => {
+  e.target.onerror = null; // Prevent infinite loop
+  e.target.src = 'https://placehold.co/400x400/FFB6C1/FFFFFF?text=No+Image'
+}}
                         />
                       </button>
                     ))}
