@@ -1,6 +1,6 @@
 // pages/cart/page.js
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, CreditCard, Lock, AlertCircle, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
@@ -32,6 +32,12 @@ export default function CartPage() {
   const [promoMessage, setPromoMessage] = useState('')
   const [editingQuantity, setEditingQuantity] = useState({}) // Track which items are being edited
   const [tempQuantity, setTempQuantity] = useState({}) // Store temporary quantity values
+  const [isRemoving, setIsRemoving] = useState({}) // Track which items are being removed
+
+  // Load cart on component mount
+  useEffect(() => {
+    loadCart()
+  }, [])
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-US', {
@@ -57,7 +63,7 @@ export default function CartPage() {
     setTempQuantity(prev => ({ ...prev, [itemId]: sanitizedValue }))
   }
 
-  const handleQuantitySubmit = (itemId, stockQuantity) => {
+  const handleQuantitySubmit = async (itemId, stockQuantity) => {
     const newQuantity = parseInt(tempQuantity[itemId]) || 1
     
     // Validate quantity
@@ -66,9 +72,14 @@ export default function CartPage() {
       finalQuantity = Math.min(finalQuantity, stockQuantity) // Don't exceed stock
     }
     
-    updateQuantity(itemId, finalQuantity)
-    setEditingQuantity(prev => ({ ...prev, [itemId]: false }))
-    setTempQuantity(prev => ({ ...prev, [itemId]: '' }))
+    try {
+      await updateQuantity(itemId, finalQuantity)
+      setEditingQuantity(prev => ({ ...prev, [itemId]: false }))
+      setTempQuantity(prev => ({ ...prev, [itemId]: '' }))
+    } catch (error) {
+      console.error('Error updating quantity:', error)
+      toast.error('Failed to update quantity')
+    }
   }
 
   const handleQuantityBlur = (itemId, stockQuantity) => {
@@ -115,10 +126,40 @@ export default function CartPage() {
   }
 
   const handleRefreshCart = async () => {
-    await loadCart()
+    try {
+      await loadCart()
+      toast.success('Cart refreshed!')
+    } catch (error) {
+      toast.error('Failed to refresh cart')
+    }
   }
 
-
+  // Handle remove item with better UX
+  const handleRemoveItem = async (item) => {
+    // Set removing state to show loading
+    setIsRemoving(prev => ({ ...prev, [item.id]: true }))
+    
+    try {
+      await removeFromCart(item.id)
+      
+      // Show success message
+      toast.success(`${item.name} removed from cart!`, {
+        position: "top-right",
+        autoClose: 3000,
+      })
+      
+      // Clear promo if cart becomes empty
+      if (cart.length <= 1) {
+        removePromoCode()
+      }
+    } catch (error) {
+      console.error('Error removing item:', error)
+      toast.error('Failed to remove item from cart')
+    } finally {
+      // Clear removing state
+      setIsRemoving(prev => ({ ...prev, [item.id]: false }))
+    }
+  }
 
   const removePromoCode = () => {
     setPromoCode('')
@@ -127,7 +168,7 @@ export default function CartPage() {
   }
 
   // Loading state
-  if (isLoading) {
+  if (isLoading && cart.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
@@ -181,7 +222,7 @@ export default function CartPage() {
   }
 
   // Empty cart state
-  if (cart.length === 0) {
+  if (!isLoading && cart.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
@@ -239,26 +280,31 @@ export default function CartPage() {
                 </p>
               </div>
               <div className="flex items-center space-x-4">
-                {error && (
-                  <button
-                    onClick={handleRefreshCart}
-                    className="text-blue-500 hover:text-blue-600 font-medium inline-flex items-center space-x-1 transition-colors"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    <span>Refresh</span>
-                  </button>
-                )}
+                <button
+                  onClick={handleRefreshCart}
+                  disabled={isLoading}
+                  className="text-blue-500 hover:text-blue-600 font-medium inline-flex items-center space-x-1 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
                 {cart.length > 0 && (
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => {
+                    onClick={async () => {
                       if (window.confirm('Are you sure you want to clear your entire cart?')) {
-                        clearCart()
-                        removePromoCode()
+                        try {
+                          await clearCart()
+                          removePromoCode()
+                          toast.success('Cart cleared successfully!')
+                        } catch (error) {
+                          toast.error('Failed to clear cart')
+                        }
                       }
                     }}
-                    className="text-red-500 hover:text-red-600 font-medium transition-colors"
+                    disabled={isLoading}
+                    className="text-red-500 hover:text-red-600 font-medium transition-colors disabled:opacity-50"
                   >
                     Clear All
                   </motion.button>
@@ -284,8 +330,11 @@ export default function CartPage() {
                         key={`${item.id}-${index}`}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20, height: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.1 }}
-                        className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 p-4 border border-gray-200 rounded-xl hover:shadow-md transition-shadow duration-300"
+                        className={`flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 p-4 border border-gray-200 rounded-xl hover:shadow-md transition-all duration-300 ${
+                          isRemoving[item.id] ? 'opacity-50 pointer-events-none' : ''
+                        }`}
                       >
                         {/* Product Image */}
                         <div className="w-20 h-20 bg-gradient-to-br from-pink-100 to-pink-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -338,7 +387,7 @@ export default function CartPage() {
                                   whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
                                   onClick={() => decreaseQuantity(item.id)}
-                                  disabled={isLoading}
+                                  disabled={isLoading || item.quantity <= 1}
                                   className="p-2 hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50"
                                 >
                                   <Minus className="w-4 h-4" />
@@ -393,14 +442,15 @@ export default function CartPage() {
                               <motion.button
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
-                               onClick={() => {
-  removeFromCart(item.id)
-  toast.error(`${item.name} removed from cart!`)
-}}
-                                disabled={isLoading}
-                                className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                                onClick={() => handleRemoveItem(item)}
+                                disabled={isLoading || isRemoving[item.id]}
+                                className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 disabled:opacity-50 relative"
                               >
-                                <Trash2 className="w-5 h-5" />
+                                {isRemoving[item.id] ? (
+                                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
+                                ) : (
+                                  <Trash2 className="w-5 h-5" />
+                                )}
                               </motion.button>
                             </div>
                           </div>
@@ -412,7 +462,7 @@ export default function CartPage() {
               </motion.div>
             </div>
 
-            {/* Order Summary - Same as before */}
+            {/* Order Summary */}
             <div className="lg:col-span-1">
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -465,18 +515,17 @@ export default function CartPage() {
                 </div>
 
                 {/* Checkout Button */}
-           
-<Link href="/checkout">
-    <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        disabled={isLoading}
-        className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-4 rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 transition-all duration-300 shadow-lg mt-6 flex items-center justify-center space-x-2 disabled:opacity-50"
-    >
-        <CreditCard className="w-5 h-5" />
-        <span>Proceed to Checkout</span>
-    </motion.button>
-</Link>
+                <Link href="/checkout">
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        disabled={isLoading || cart.length === 0}
+                        className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-4 rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 transition-all duration-300 shadow-lg mt-6 flex items-center justify-center space-x-2 disabled:opacity-50"
+                    >
+                        <CreditCard className="w-5 h-5" />
+                        <span>Proceed to Checkout</span>
+                    </motion.button>
+                </Link>
 
                 {/* Security Notice */}
                 <div className="flex items-center justify-center space-x-2 mt-4 text-sm text-gray-500">
