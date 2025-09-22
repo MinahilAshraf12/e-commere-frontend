@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Header from '../components/Header'
@@ -10,8 +10,7 @@ import { Filter, Search, Grid, List, ChevronDown, Loader2, AlertCircle } from 'l
 // API Configuration
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
-
-// Debounce hook
+// Debounce hook - optimized
 function useDebounce(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value)
 
@@ -37,6 +36,7 @@ export default function Shop() {
   const [categories, setCategories] = useState(['All'])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false)
   
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState('All')
@@ -51,73 +51,89 @@ export default function Shop() {
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState('grid')
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(9)
+  const [itemsPerPage] = useState(12) // Increased for better performance
   const [totalProducts, setTotalProducts] = useState(0)
   const [hasMoreProducts, setHasMoreProducts] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [productsLoading, setProductsLoading] = useState(false)
 
-  // Debounce search term with longer delay
-  const debouncedSearchTerm = useDebounce(searchTerm, 800)
+  // Optimized debounce with shorter delay
+  const debouncedSearchTerm = useDebounce(searchTerm, 500)
 
-  const sortOptions = [
+  const sortOptions = useMemo(() => [
     { value: 'date-desc', label: 'Newest First' },
     { value: 'date-asc', label: 'Oldest First' },
     { value: 'name-asc', label: 'Name A-Z' },
     { value: 'name-desc', label: 'Name Z-A' },
     { value: 'new_price-asc', label: 'Price: Low to High' },
     { value: 'new_price-desc', label: 'Price: High to Low' }
-  ]
+  ], [])
 
-  // Handle URL parameters on component mount and when searchParams change
+  // Initialize from URL params only once
   useEffect(() => {
+    if (!initialDataLoaded) return
+
     const categoryFromUrl = searchParams.get('category')
     const searchFromUrl = searchParams.get('search')
     const sortFromUrl = searchParams.get('sort')
     const minPriceFromUrl = searchParams.get('minPrice')
     const maxPriceFromUrl = searchParams.get('maxPrice')
 
-    // Set category from URL
-    if (categoryFromUrl && categoryFromUrl !== selectedCategory) {
+    let hasChanges = false
+
+    if (categoryFromUrl && decodeURIComponent(categoryFromUrl) !== selectedCategory) {
       setSelectedCategory(decodeURIComponent(categoryFromUrl))
+      hasChanges = true
     }
 
-    // Set search term from URL
-    if (searchFromUrl && searchFromUrl !== searchTerm) {
+    if (searchFromUrl && decodeURIComponent(searchFromUrl) !== searchTerm) {
       setSearchTerm(decodeURIComponent(searchFromUrl))
+      hasChanges = true
     }
 
-    // Set sort from URL
     if (sortFromUrl) {
       const [field, order] = sortFromUrl.split('-')
-      if (field && order) {
+      if (field && order && (field !== sortBy || order !== sortOrder)) {
         setSortBy(field)
         setSortOrder(order)
+        hasChanges = true
       }
     }
 
-    // Set price range from URL
     if (minPriceFromUrl) {
-      const minPrice = parseInt(minPriceFromUrl)
-      if (!isNaN(minPrice)) {
-        setMinPrice(minPrice)
+      const minPriceValue = parseInt(minPriceFromUrl)
+      if (!isNaN(minPriceValue) && minPriceValue !== minPrice) {
+        setMinPrice(minPriceValue)
+        hasChanges = true
       }
     }
 
     if (maxPriceFromUrl) {
-      const maxPrice = parseInt(maxPriceFromUrl)
-      if (!isNaN(maxPrice)) {
-        setMaxPrice(maxPrice)
+      const maxPriceValue = parseInt(maxPriceFromUrl)
+      if (!isNaN(maxPriceValue) && maxPriceValue !== maxPrice) {
+        setMaxPrice(maxPriceValue)
+        hasChanges = true
       }
     }
-  }, [searchParams])
+
+    if (hasChanges) {
+      // Delay product fetch to avoid multiple rapid calls
+      const timer = setTimeout(() => {
+        resetAndFetchProducts()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams, initialDataLoaded])
 
   // Fetch initial data
   useEffect(() => {
     fetchInitialData()
   }, [])
 
-  // Update URL when filters change
+  // Update URL when filters change - optimized
   const updateURL = useCallback((updates = {}) => {
+    if (!initialDataLoaded) return
+
     const params = new URLSearchParams()
     
     const category = updates.category !== undefined ? updates.category : selectedCategory
@@ -126,7 +142,7 @@ export default function Shop() {
     const minPriceValue = updates.minPrice !== undefined ? updates.minPrice : minPrice
     const maxPriceValue = updates.maxPrice !== undefined ? updates.maxPrice : maxPrice
 
-    // Only add parameters that are not default values
+    // Only add non-default parameters
     if (category && category !== 'All') {
       params.set('category', encodeURIComponent(category))
     }
@@ -147,26 +163,30 @@ export default function Shop() {
       params.set('maxPrice', maxPriceValue.toString())
     }
 
-    // Update URL without triggering a page reload
     const newUrl = params.toString() ? `/shop?${params.toString()}` : '/shop'
-    router.replace(newUrl)
-  }, [selectedCategory, searchTerm, sortBy, sortOrder, minPrice, maxPrice, priceRange, router])
+    
+    // Use window.history.pushState for instant URL updates without navigation
+    window.history.pushState(null, '', newUrl)
+  }, [selectedCategory, searchTerm, sortBy, sortOrder, minPrice, maxPrice, priceRange, initialDataLoaded])
 
-  // Fetch products when filters change
+  // Optimized product fetching when filters change
   useEffect(() => {
-    if (categories.length > 1) { // Only fetch if categories are loaded
+    if (!initialDataLoaded) return
+    
+    const timer = setTimeout(() => {
       resetAndFetchProducts()
       updateURL()
-    }
+    }, 50) // Very short delay to batch rapid changes
+    
+    return () => clearTimeout(timer)
   }, [selectedCategory, sortBy, sortOrder, minPrice, maxPrice])
 
-  // Separate effect for search term
+  // Search term handling
   useEffect(() => {
-    if (debouncedSearchTerm !== searchTerm) return // Still debouncing
-    if (categories.length > 1) { // Only fetch if categories are loaded
-      resetAndFetchProducts()
-      updateURL({ search: debouncedSearchTerm })
-    }
+    if (!initialDataLoaded || debouncedSearchTerm === searchTerm) return
+    
+    resetAndFetchProducts()
+    updateURL({ search: debouncedSearchTerm })
   }, [debouncedSearchTerm])
 
   const fetchInitialData = async () => {
@@ -174,17 +194,23 @@ export default function Shop() {
       setLoading(true)
       setError(null)
       
-      // Fetch categories
-      const categoriesResponse = await fetch(`${API_BASE}/categories`)
-      const categoriesData = await categoriesResponse.json()
+      // Parallel API calls for faster loading
+      const [categoriesResponse, filtersResponse] = await Promise.all([
+        fetch(`${API_BASE}/categories`),
+        fetch(`${API_BASE}/product-filters`)
+      ])
       
+      const [categoriesData, filtersData] = await Promise.all([
+        categoriesResponse.json(),
+        filtersResponse.json()
+      ])
+      
+      // Process categories
       if (categoriesData.success) {
-        // Filter out 'women' category and ensure proper order
         let filteredCategories = categoriesData.categories.filter(cat => 
           cat.toLowerCase() !== 'women'
         )
         
-        // Ensure 'All' is first
         const allIndex = filteredCategories.indexOf('All')
         if (allIndex > 0) {
           filteredCategories.splice(allIndex, 1)
@@ -195,43 +221,34 @@ export default function Shop() {
         
         setCategories(filteredCategories)
         
-        // Check if there's a category from URL and if it exists in available categories
+        // Handle URL category
         const categoryFromUrl = searchParams.get('category')
         if (categoryFromUrl) {
           const decodedCategory = decodeURIComponent(categoryFromUrl)
           if (filteredCategories.includes(decodedCategory)) {
             setSelectedCategory(decodedCategory)
           } else {
-            // If category from URL doesn't exist, redirect to shop without category
             router.replace('/shop')
             setSelectedCategory('All')
           }
         }
       }
 
-      // Get price range for filters
-      const filtersResponse = await fetch(`${API_BASE}/product-filters`)
-      const filtersData = await filtersResponse.json()
-      
+      // Process price range
       if (filtersData.success && filtersData.filters.priceRange) {
         const { minPrice: min, maxPrice: max } = filtersData.filters.priceRange
         const roundedMin = Math.floor(min)
         const roundedMax = Math.ceil(max)
         setPriceRange({ min: roundedMin, max: roundedMax })
         
-        // Only set default prices if not set from URL
         const minPriceFromUrl = searchParams.get('minPrice')
         const maxPriceFromUrl = searchParams.get('maxPrice')
         
-        if (!minPriceFromUrl) {
-          setMinPrice(roundedMin)
-        }
-        if (!maxPriceFromUrl) {
-          setMaxPrice(roundedMax)
-        }
+        if (!minPriceFromUrl) setMinPrice(roundedMin)
+        if (!maxPriceFromUrl) setMaxPrice(roundedMax)
       }
 
-      // Initial products fetch will be triggered by useEffect when categories are set
+      setInitialDataLoaded(true)
       
     } catch (error) {
       console.error('Error fetching initial data:', error)
@@ -245,7 +262,7 @@ export default function Shop() {
       if (isLoadMore) {
         setLoadingMore(true)
       } else {
-        setLoading(true)
+        setProductsLoading(true)
       }
 
       const params = new URLSearchParams({
@@ -282,10 +299,8 @@ export default function Shop() {
       
       if (data.success) {
         if (isLoadMore) {
-          // Append new products for load more
           setAllProducts(prev => [...prev, ...data.products])
         } else {
-          // Replace products for new search/filter
           setAllProducts(data.products)
         }
         
@@ -297,10 +312,13 @@ export default function Shop() {
       }
     } catch (error) {
       console.error('Error fetching products:', error)
-      setError(`Failed to load products: ${error.message}`)
+      if (!isLoadMore) {
+        setError(`Failed to load products: ${error.message}`)
+      }
     } finally {
       setLoading(false)
       setLoadingMore(false)
+      setProductsLoading(false)
     }
   }
 
@@ -311,44 +329,45 @@ export default function Shop() {
     fetchProducts(1, false)
   }, [selectedCategory, sortBy, sortOrder, minPrice, maxPrice, debouncedSearchTerm])
 
-  const handleCategoryFilter = (category) => {
+  // Optimized handlers
+  const handleCategoryFilter = useCallback((category) => {
     if (category !== selectedCategory) {
       setSelectedCategory(category)
     }
-  }
+  }, [selectedCategory])
 
-  const handleSort = (sortValue) => {
+  const handleSort = useCallback((sortValue) => {
     const [field, order] = sortValue.split('-')
     setSortBy(field)
     setSortOrder(order)
-  }
+  }, [])
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = useCallback((e) => {
     setSearchTerm(e.target.value)
-  }
+  }, [])
 
-  const handleMinPriceChange = (e) => {
+  const handleMinPriceChange = useCallback((e) => {
     const value = parseInt(e.target.value)
     setMinPrice(value)
     if (value > maxPrice) {
       setMaxPrice(value)
     }
-  }
+  }, [maxPrice])
 
-  const handleMaxPriceChange = (e) => {
+  const handleMaxPriceChange = useCallback((e) => {
     const value = parseInt(e.target.value)
     setMaxPrice(value)
     if (value < minPrice) {
       setMinPrice(value)
     }
-  }
+  }, [minPrice])
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     const nextPage = currentPage + 1
     fetchProducts(nextPage, true)
-  }
+  }, [currentPage])
 
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setSelectedCategory('All')
     setSearchTerm('')
     setMinPrice(priceRange.min)
@@ -359,25 +378,21 @@ export default function Shop() {
     setAllProducts([])
     setHasMoreProducts(false)
     
-    // Clear URL parameters
-    router.replace('/shop')
+    // Clear URL without navigation
+    window.history.pushState(null, '', '/shop')
     
-    // Fetch products with cleared filters
     setTimeout(() => {
       fetchProducts(1, false)
-    }, 100)
-  }
+    }, 50)
+  }, [priceRange])
 
-  // Get category display name for hero section
-  const getCategoryDisplayName = () => {
-    if (selectedCategory === 'All') {
-      return 'Our Collection'
-    }
-    return selectedCategory
-  }
+  // Memoized category display name
+  const categoryDisplayName = useMemo(() => {
+    return selectedCategory === 'All' ? 'Our Collection' : selectedCategory
+  }, [selectedCategory])
 
   // Loading state
-  if (loading && allProducts.length === 0) {
+  if (loading && !initialDataLoaded) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
@@ -428,7 +443,7 @@ export default function Shop() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">{getCategoryDisplayName()}</h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">{categoryDisplayName}</h1>
             <p className="text-xl text-pink-100">
               {selectedCategory === 'All' 
                 ? `Discover your perfect style from our curated selection of ${totalProducts} products`
@@ -476,19 +491,17 @@ export default function Shop() {
                 <h3 className="text-lg font-semibold mb-4">Categories</h3>
                 <div className="space-y-2">
                   {categories.map((category) => (
-                    <motion.button
+                    <button
                       key={category}
                       onClick={() => handleCategoryFilter(category)}
-                      className={`w-full text-left p-3 rounded-lg transition-all duration-300 ${
+                      className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
                         selectedCategory === category
                           ? 'bg-pink-100 text-pink-700 font-semibold'
                           : 'hover:bg-gray-50'
                       }`}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
                     >
                       {category}
-                    </motion.button>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -508,7 +521,7 @@ export default function Shop() {
                       step="1"
                       value={minPrice}
                       onChange={handleMinPriceChange}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                     />
                   </div>
                   <div>
@@ -522,7 +535,7 @@ export default function Shop() {
                       step="1"
                       value={maxPrice}
                       onChange={handleMaxPriceChange}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                     />
                   </div>
                   <div className="text-sm text-gray-600 text-center">
@@ -554,13 +567,13 @@ export default function Shop() {
                     <div className="flex items-center space-x-2">
                       <button 
                         onClick={() => setViewMode('grid')}
-                        className={`p-2 rounded ${viewMode === 'grid' ? 'bg-pink-100 text-pink-600' : 'hover:bg-gray-100'}`}
+                        className={`p-2 rounded transition-colors ${viewMode === 'grid' ? 'bg-pink-100 text-pink-600' : 'hover:bg-gray-100'}`}
                       >
                         <Grid className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => setViewMode('list')}
-                        className={`p-2 rounded ${viewMode === 'list' ? 'bg-pink-100 text-pink-600' : 'hover:bg-gray-100'}`}
+                        className={`p-2 rounded transition-colors ${viewMode === 'list' ? 'bg-pink-100 text-pink-600' : 'hover:bg-gray-100'}`}
                       >
                         <List className="w-4 h-4" />
                       </button>
@@ -580,11 +593,11 @@ export default function Shop() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="w-4 h-4 absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <ChevronDown className="w-4 h-4 absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
                     
                     <div className="text-sm text-gray-600">
-                      Showing {allProducts.length} of {totalProducts} products
+                      {productsLoading ? 'Loading...' : `Showing ${allProducts.length} of ${totalProducts} products`}
                     </div>
                   </div>
                 </div>
@@ -616,7 +629,11 @@ export default function Shop() {
               </motion.div>
 
               {/* Products Grid */}
-              {allProducts.length > 0 ? (
+              {productsLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-pink-600" />
+                </div>
+              ) : allProducts.length > 0 ? (
                 <>
                   <div className={`grid gap-6 ${
                     viewMode === 'grid' 
@@ -628,7 +645,7 @@ export default function Shop() {
                         key={`${product.id}-${index}`}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: (index % 9) * 0.1 }}
+                        transition={{ duration: 0.3, delay: (index % 12) * 0.05 }}
                       >
                         <ProductCard product={product} />
                       </motion.div>

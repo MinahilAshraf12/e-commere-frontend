@@ -387,7 +387,7 @@ export default function ModernFooter() {
           >
             <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-6">
               <p className="text-gray-600 text-sm">
-                © 2024 Pink Dreams. All rights reserved.
+                © 2025 Pink Dreams. All rights reserved.
               </p>
               <div className="flex space-x-4">
                 <a href="/privacy" className="text-gray-600 hover:text-pink-600 text-sm transition-colors duration-300">

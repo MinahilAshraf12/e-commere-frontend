@@ -73,54 +73,57 @@ export default function Home() {
     fetchAllData()
   }, [])
 
-  const fetchAllData = async () => {
-    try {
-      setLoading(true)
-      
-      // Fetch featured products
-      const featuredResponse = await fetch(`${API_BASE}/featured-products?limit=4`)
-      const featuredData = await featuredResponse.json()
-      
-      // If no featured products, fetch recent products
-      let productsToShow = []
-      if (featuredData.success && featuredData.products.length > 0) {
-        productsToShow = featuredData.products
-      } else {
-        // Fallback to recent products
-        const allProductsResponse = await fetch(`${API_BASE}/allproducts?limit=4&sortBy=date&sortOrder=desc`)
-        const allProductsData = await allProductsResponse.json()
-        if (allProductsData.success) {
-          productsToShow = allProductsData.products
-        }
+ const fetchAllData = async () => {
+  try {
+    setLoading(true)
+    
+    // Fetch featured products
+    const featuredResponse = await fetch(`${API_BASE}/featured-products?limit=4`)
+    const featuredData = await featuredResponse.json()
+    
+    // If no featured products, fetch recent products
+    let productsToShow = []
+    if (featuredData.success && featuredData.products.length > 0) {
+      productsToShow = featuredData.products
+    } else {
+      // Fallback to recent products
+      const allProductsResponse = await fetch(`${API_BASE}/allproducts?limit=4&sortBy=date&sortOrder=desc`)
+      const allProductsData = await allProductsResponse.json()
+      if (allProductsData.success) {
+        productsToShow = allProductsData.products
       }
-      
-      setFeaturedProducts(productsToShow)
-
-      // Fetch categories for category section
-      const categoriesResponse = await fetch(`${API_BASE}/categories`)
-      const categoriesData = await categoriesResponse.json()
-      if (categoriesData.success) {
-        // Filter out 'All' and take first 3 categories
-        const filteredCategories = categoriesData.categories
-          .filter(cat => cat !== 'All')
-          .slice(0, 3)
-        setCategories(filteredCategories)
-      }
-
-      // Fetch dashboard stats
-      const statsResponse = await fetch(`${API_BASE}/dashboard/stats`)
-      const statsData = await statsResponse.json()
-      if (statsData.success) {
-        setStats(statsData.stats)
-      }
-
-    } catch (error) {
-      console.error('Error fetching data:', error)
-      setError('Failed to load data')
-    } finally {
-      setLoading(false)
     }
+    
+    setFeaturedProducts(productsToShow)
+
+    // Fetch categories using the same logic as shop page
+    const categoriesResponse = await fetch(`${API_BASE}/categories`)
+    const categoriesData = await categoriesResponse.json()
+    
+    if (categoriesData.success) {
+      // Filter out 'women' category and 'All' category, same as shop page
+      let filteredCategories = categoriesData.categories.filter(cat => 
+        cat.toLowerCase() !== 'women' && cat.toLowerCase() !== 'all'
+      )
+      
+      // Take first 3 categories for home page display
+      setCategories(filteredCategories.slice(0, 3))
+    }
+
+    // Fetch dashboard stats
+    const statsResponse = await fetch(`${API_BASE}/dashboard/stats`)
+    const statsData = await statsResponse.json()
+    if (statsData.success) {
+      setStats(statsData.stats)
+    }
+
+  } catch (error) {
+    console.error('Error fetching data:', error)
+    setError('Failed to load data')
+  } finally {
+    setLoading(false)
   }
+}
 
   // Dynamic stats based on real data
   const dynamicStats = [
@@ -186,13 +189,13 @@ export default function Home() {
   ]
 
   // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
-      </div>
-    )
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center">
+  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
+  //     </div>
+  //   )
+  // }
 
   // Error state
   // if (error) {
@@ -453,56 +456,80 @@ export default function Home() {
       </section>
 
       {/* Categories Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <motion.div 
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h2 className="text-4xl font-bold mb-4">Shop by Category</h2>
-            <p className="text-xl text-gray-600">Find exactly what you're looking for</p>
-          </motion.div>
+    <section className="py-20 bg-gray-50">
+  <div className="container mx-auto px-4">
+    <motion.div 
+      className="text-center mb-16"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+    >
+      <h2 className="text-4xl font-bold mb-4">Shop by Category</h2>
+      <p className="text-xl text-gray-600">Find exactly what you're looking for</p>
+    </motion.div>
+    
+    {categories.length > 0 ? (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {categories.map((category, index) => {
+          const categoryStats = stats.categoryStats?.find(cat => cat._id === category)
+          const itemCount = categoryStats ? `${categoryStats.count}+ items` : 'View items'
           
-          {categories.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {categories.map((category, index) => {
-                const categoryStats = stats.categoryStats?.find(cat => cat._id === category)
-                const itemCount = categoryStats ? `${categoryStats.count}+ items` : 'View items'
-                
-                return (
-                  <motion.div 
-                    key={category}
-                    className="relative group cursor-pointer overflow-hidden rounded-2xl"
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <Link href={`/category/${encodeURIComponent(category)}`}>
-                      <img 
-                        src={categoryImages[category] || '/assets/shop1.avif'} 
-                        alt={category}
-                        className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-6 left-6 text-white">
-                        <h3 className="text-2xl font-bold mb-2">{category}</h3>
-                        <p className="text-pink-200">{itemCount}</p>
-                      </div>
-                    </Link>
-                  </motion.div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-600 text-lg">Categories will be displayed here once products are added.</p>
-            </div>
-          )}
-        </div>
-      </section>
+          return (
+            <motion.div 
+              key={category}
+              className="relative group cursor-pointer overflow-hidden rounded-2xl"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              whileHover={{ scale: 1.05 }}
+            >
+              {/* Updated Link to go to shop page with category filter */}
+              <Link href={`/shop?category=${encodeURIComponent(category)}`}>
+                <img 
+                  src={categoryImages[category] || '/assets/shop1.avif'} 
+                  alt={category}
+                  className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-6 left-6 text-white">
+                  <h3 className="text-2xl font-bold mb-2">{category}</h3>
+                  <p className="text-pink-200">{itemCount}</p>
+                </div>
+              </Link>
+            </motion.div>
+          )
+        })}
+      </div>
+    ) : (
+      <div className="text-center py-12">
+        <p className="text-gray-600 text-lg">Categories will be displayed here once products are added.</p>
+        {/* Optional: Add a link to shop page */}
+        <Link href="/shop" className="inline-block mt-4">
+          <button className="btn-primary px-6 py-3">
+            Browse All Products
+          </button>
+        </Link>
+      </div>
+    )}
+    
+    {/* Optional: Add "View All Categories" button if you want */}
+    {categories.length > 0 && (
+      <motion.div 
+        className="text-center mt-12"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+      >
+        <Link href="/shop">
+          <button className="btn-secondary text-lg px-8 py-4 inline-flex items-center space-x-2">
+            <span>View All Categories</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </Link>
+      </motion.div>
+    )}
+  </div>
+</section>
 
       {/* Testimonials */}
       <section className="py-20 bg-white">

@@ -26,16 +26,89 @@ export default function WishlistPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const addToCart = async (product) => {
-    if (!user?.id) {
-      alert('Please log in to add items to cart')
+  // In your wishlist page.js, replace the addToCart function with this fixed version:
+
+const addToCart = async (product) => {
+  if (!user?.id) {
+    alert('Please log in to add items to cart')
+    return
+  }
+
+  try {
+    // For temporary users, handle locally
+    if (user.isTemp) {
+      const existingCart = JSON.parse(localStorage.getItem('cart') || '[]')
+      const existingItemIndex = existingCart.findIndex(item => item.id === product.id)
+      
+      if (existingItemIndex > -1) {
+        existingCart[existingItemIndex].quantity += 1
+      } else {
+        existingCart.push({
+          id: product.id,
+          name: product.name,
+          price: product.new_price,
+          image: product.image,
+          quantity: 1,
+          addedAt: new Date().toISOString()
+        })
+      }
+      
+      localStorage.setItem('cart', JSON.stringify(existingCart))
+      
+      // Remove from wishlist after successful cart addition
+      await removeFromWishlist(product.id)
+      
+      // Dispatch cart update event
+      window.dispatchEvent(new Event('cartUpdated'))
+      toast.success(`${product.name} added to cart and removed from wishlist!`)
       return
     }
 
-    try {
-      // For temporary users, handle locally
-      if (user.isTemp) {
-        const existingCart = JSON.parse(localStorage.getItem('cart') || '[]')
+    // For authenticated users, use backend
+    const response = await fetch(`${API_BASE}/cart/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: user.id,
+        productId: product.id,
+        quantity: 1
+      })
+    })
+
+    const data = await response.json()
+
+    if (data.success) {
+      // Remove from wishlist after successful cart addition
+      await removeFromWishlist(product.id)
+      
+      // Dispatch cart update event
+      window.dispatchEvent(new Event('cartUpdated'))
+      toast.success(`${product.name} added to cart and removed from wishlist!`)
+    } else {
+      toast.error(data.message || 'Failed to add item to cart')
+    }
+  } catch (error) {
+    console.error('Error adding to cart:', error)
+    toast.error('Failed to add item to cart. Please try again.')
+  }
+}
+
+ // Replace the addAllToCart function in your wishlist page.js with this:
+
+const addAllToCart = async () => {
+  if (wishlist.length === 0) return
+
+  try {
+    setLoading(true)
+    
+    // If using temporary user (localStorage)
+    if (user?.isTemp) {
+      const existingCart = JSON.parse(localStorage.getItem('cart') || '[]')
+      let addedCount = 0
+      
+      wishlist.forEach(product => {
         const existingItemIndex = existingCart.findIndex(item => item.id === product.id)
         
         if (existingItemIndex > -1) {
@@ -50,61 +123,42 @@ export default function WishlistPage() {
             addedAt: new Date().toISOString()
           })
         }
-        
-        localStorage.setItem('cart', JSON.stringify(existingCart))
-        window.dispatchEvent(new Event('cartUpdated'))
-        toast.success(`${product.name} added to cart!`)
-        return
-      }
-
-      // For authenticated users, use backend
-      const response = await fetch(`${API_BASE}/cart/add`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          productId: product.id,
-          quantity: 1
-        })
+        addedCount++
       })
-
-      const data = await response.json()
-
-      if (data.success) {
-        window.dispatchEvent(new Event('cartUpdated'))
-        toast.success(`${product.name} added to cart!`)
-      } else {
-        toast.error(data.message || 'Failed to add item to cart')
-      }
-    } catch (error) {
-      console.error('Error adding to cart:', error)
-      toast.error('Failed to add item to cart. Please try again.')
-    }
-  }
-
-  const addAllToCart = async () => {
-    if (wishlist.length === 0) return
-
-    try {
-      setLoading(true)
-      const productIds = wishlist.map(item => item.id)
-      const result = await moveToCart(productIds)
       
-      if (result.success) {
-        const movedCount = result.movedCount || result.movedItems?.length || productIds.length
-        toast.success(`${movedCount} items moved to cart!`)
-      } else {
-        toast.error(result.error || 'Failed to move items to cart')
-      }
-    } catch (error) {
-      console.error('Error adding all to cart:', error)
-      toast.error('Failed to move items to cart. Please try again.')
-    } finally {
-      setLoading(false)
+      localStorage.setItem('cart', JSON.stringify(existingCart))
+      
+      // Clear wishlist after successful addition
+      await clearWishlist()
+      
+      // Dispatch cart update event
+      window.dispatchEvent(new Event('cartUpdated'))
+      
+      toast.success(`${addedCount} items moved to cart!`)
+      return
     }
+
+    // For authenticated users, use the existing moveToCart function
+    const productIds = wishlist.map(item => item.id)
+    const result = await moveToCart(productIds)
+    
+    if (result.success) {
+      const movedCount = result.movedCount || result.movedItems?.length || productIds.length
+      
+      // Dispatch cart update event to refresh cart state
+      window.dispatchEvent(new Event('cartUpdated'))
+      
+      toast.success(`${movedCount} items moved to cart!`)
+    } else {
+      toast.error(result.error || 'Failed to move items to cart')
+    }
+  } catch (error) {
+    console.error('Error adding all to cart:', error)
+    toast.error('Failed to move items to cart. Please try again.')
+  } finally {
+    setLoading(false)
   }
+}
 
   const handleClearWishlist = async () => {
     if (window.confirm('Are you sure you want to clear your entire wishlist?')) {

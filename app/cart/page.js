@@ -118,6 +118,8 @@ export default function CartPage() {
     await loadCart()
   }
 
+
+
   const removePromoCode = () => {
     setPromoCode('')
     setPromoDiscount(0)
@@ -463,7 +465,7 @@ export default function CartPage() {
                 </div>
 
                 {/* Checkout Button */}
-               // In your cart page, replace the checkout button with:
+           
 <Link href="/checkout">
     <motion.button
         whileHover={{ scale: 1.02 }}
