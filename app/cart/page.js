@@ -1,6 +1,6 @@
 // pages/cart/page.js
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, CreditCard, Lock, AlertCircle, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
@@ -32,16 +32,6 @@ export default function CartPage() {
   const [promoMessage, setPromoMessage] = useState('')
   const [editingQuantity, setEditingQuantity] = useState({}) // Track which items are being edited
   const [tempQuantity, setTempQuantity] = useState({}) // Store temporary quantity values
-
-  // Add event listener for cart updates from wishlist
-  useEffect(() => {
-    const handleCartUpdate = () => {
-      loadCart() // This will refresh the cart state
-    }
-    
-    window.addEventListener('cartUpdated', handleCartUpdate)
-    return () => window.removeEventListener('cartUpdated', handleCartUpdate)
-  }, [loadCart])
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-US', {
@@ -126,24 +116,14 @@ export default function CartPage() {
 
   const handleRefreshCart = async () => {
     await loadCart()
-    toast.info('Cart refreshed!')
   }
+
+
 
   const removePromoCode = () => {
     setPromoCode('')
     setPromoDiscount(0)
     setPromoMessage('')
-  }
-
-  // Enhanced remove function with better feedback
-  const handleRemoveItem = async (item) => {
-    try {
-      await removeFromCart(item.id)
-      toast.error(`${item.name} removed from cart!`)
-    } catch (error) {
-      console.error('Error removing item:', error)
-      toast.error('Failed to remove item. Please try again.')
-    }
   }
 
   // Loading state
@@ -268,14 +248,6 @@ export default function CartPage() {
                     <span>Refresh</span>
                   </button>
                 )}
-                <button
-                  onClick={handleRefreshCart}
-                  className="text-blue-500 hover:text-blue-600 font-medium inline-flex items-center space-x-1 transition-colors"
-                  title="Refresh cart data"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Refresh</span>
-                </button>
                 {cart.length > 0 && (
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -284,7 +256,6 @@ export default function CartPage() {
                       if (window.confirm('Are you sure you want to clear your entire cart?')) {
                         clearCart()
                         removePromoCode()
-                        toast.success('Cart cleared!')
                       }
                     }}
                     className="text-red-500 hover:text-red-600 font-medium transition-colors"
@@ -313,7 +284,6 @@ export default function CartPage() {
                         key={`${item.id}-${index}`}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.3, delay: index * 0.1 }}
                         className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 p-4 border border-gray-200 rounded-xl hover:shadow-md transition-shadow duration-300"
                       >
@@ -423,7 +393,10 @@ export default function CartPage() {
                               <motion.button
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
-                                onClick={() => handleRemoveItem(item)}
+                               onClick={() => {
+  removeFromCart(item.id)
+  toast.error(`${item.name} removed from cart!`)
+}}
                                 disabled={isLoading}
                                 className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
                               >
@@ -439,7 +412,7 @@ export default function CartPage() {
               </motion.div>
             </div>
 
-            {/* Order Summary */}
+            {/* Order Summary - Same as before */}
             <div className="lg:col-span-1">
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -492,17 +465,18 @@ export default function CartPage() {
                 </div>
 
                 {/* Checkout Button */}
-                <Link href="/checkout">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    disabled={isLoading}
-                    className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-4 rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 transition-all duration-300 shadow-lg mt-6 flex items-center justify-center space-x-2 disabled:opacity-50"
-                  >
-                    <CreditCard className="w-5 h-5" />
-                    <span>Proceed to Checkout</span>
-                  </motion.button>
-                </Link>
+           
+<Link href="/checkout">
+    <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        disabled={isLoading}
+        className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-4 rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 transition-all duration-300 shadow-lg mt-6 flex items-center justify-center space-x-2 disabled:opacity-50"
+    >
+        <CreditCard className="w-5 h-5" />
+        <span>Proceed to Checkout</span>
+    </motion.button>
+</Link>
 
                 {/* Security Notice */}
                 <div className="flex items-center justify-center space-x-2 mt-4 text-sm text-gray-500">
