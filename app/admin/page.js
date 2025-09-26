@@ -38,7 +38,9 @@ import {
   Save,
   AlertCircle,
   Check,
-  Loader
+  Loader,
+  LogOut,
+  Shield
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Area, AreaChart } from 'recharts';
 import AddProductPage from './components/AddProduct';
@@ -46,8 +48,16 @@ import EditProductPage from './components/EditProduct';
 import ViewProducts from './components/ViewProducts';
 import ProductDetailsPage from './components/ProductDetails';
 import AdminOrders from './components/AdminOrders';
+import AdminLogin from './components/AdminLogin';
 
 const AdminPanel = () => {
+  // ALL STATES FIRST - Before any conditional logic
+  // Authentication states
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminData, setAdminData] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Existing states
   const [selectedProductForEdit, setSelectedProductForEdit] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -65,6 +75,7 @@ const AdminPanel = () => {
   const [analyticsYear, setAnalyticsYear] = useState(new Date().getFullYear());
   const [analyticsMonth, setAnalyticsMonth] = useState(new Date().getMonth() + 1);
 
+  // Constants
   const periods = ['daily', 'weekly', 'monthly', 'yearly'];
   const months = [
     { value: 1, label: 'January' },
@@ -81,10 +92,156 @@ const AdminPanel = () => {
     { value: 12, label: 'December' }
   ];
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+  // ALL CALLBACKS AND FUNCTIONS - Before useEffect hooks
+  // Fetch dashboard stats
+  const fetchStats = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_BASE}/dashboard/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  }, [API_BASE]);
+
+  // Fetch analytics data
+  const fetchAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+
+      // Sales Overview
+      const salesResponse = await fetch(`${API_BASE}/analytics/sales-overview?period=${analyticsPeriod}&year=${analyticsYear}`, { headers });
+      const salesData = await salesResponse.json();
+      if (salesData.success) {
+        setSalesData(salesData.data);
+      }
+
+      // Product Performance
+      const productResponse = await fetch(`${API_BASE}/analytics/product-performance?year=${analyticsYear}&month=${analyticsMonth}`, { headers });
+      const productData = await productResponse.json();
+      if (productData.success) {
+        setProductPerformance(productData.data);
+      }
+
+      // Category Performance
+      const categoryResponse = await fetch(`${API_BASE}/analytics/category-performance?year=${analyticsYear}`, { headers });
+      const categoryData = await categoryResponse.json();
+      if (categoryData.success) {
+        setCategoryPerformance(categoryData.data);
+      }
+
+      // Revenue Metrics
+      const revenueResponse = await fetch(`${API_BASE}/analytics/revenue-metrics`, { headers });
+      const revenueData = await revenueResponse.json();
+      if (revenueData.success) {
+        setRevenueMetrics(revenueData.metrics);
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [API_BASE, analyticsPeriod, analyticsYear, analyticsMonth]);
+
+  // Generate sample data
+  const generateSampleData = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_BASE}/generate-sample-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`Generated ${data.salesGenerated} sample sales records`);
+        fetchAnalytics();
+      } else {
+        alert('Error generating sample data:' + data.message);
+      }
+    } catch (error) {
+      console.error('Error generating sample data:', error);
+      alert('Error generating sample data');
+    }
+  }, [API_BASE, fetchAnalytics]);
+
+  // Check if admin is authenticated
+  const checkAuthStatus = useCallback(async () => {
+    setAuthLoading(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const storedAdminData = localStorage.getItem('adminData');
+
+      if (token && storedAdminData) {
+        // Verify token with server
+        const response = await fetch(`${API_BASE}/admin/profile`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setIsAuthenticated(true);
+          setAdminData(data.admin);
+        } else {
+          // Token invalid, clear storage
+          localStorage.removeItem('adminToken');
+          localStorage.removeItem('adminData');
+          setIsAuthenticated(false);
+          setAdminData(null);
+        }
+      } else {
+        setIsAuthenticated(false);
+        setAdminData(null);
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setIsAuthenticated(false);
+      setAdminData(null);
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [API_BASE]);
+
+  // Handle successful login
+  const handleLoginSuccess = useCallback((admin) => {
+    setIsAuthenticated(true);
+    setAdminData(admin);
+    setActiveTab('dashboard');
+  }, []);
+
+  // Handle logout
+  const handleLogout = useCallback(() => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminData');
+      setIsAuthenticated(false);
+      setAdminData(null);
+      setActiveTab('dashboard');
+    }
+  }, []);
 
   // Image utility functions
-  const getImageSrc = (imageSrc, fallback = 'https://placehold.co/400x400/FFB6C1/FFFFFF?text=Pink+Dreams') => {
+  const getImageSrc = useCallback((imageSrc, fallback = 'https://placehold.co/400x400/FFB6C1/FFFFFF?text=Pink+Dreams') => {
     if (!imageSrc) return fallback
     
     const baseURL = API_BASE || 'http://localhost:4000'
@@ -114,35 +271,39 @@ const AdminPanel = () => {
     }
     
     return `${baseURL}/${imageSrc}`
-  }
+  }, [API_BASE]);
 
-  const handleImageError = (e) => {
+  const handleImageError = useCallback((e) => {
     if (e.target.src !== 'https://placehold.co/400x400/FFB6C1/FFFFFF?text=No+Image') {
       e.target.onerror = null
       e.target.src = 'https://placehold.co/400x400/FFB6C1/FFFFFF?text=No+Image'
     }
-  }
+  }, []);
 
   // Handle edit product navigation
-  const handleEditProduct = (product) => {
+  const handleEditProduct = useCallback((product) => {
     setSelectedProductForEdit(product);
     setActiveTab('edit-product');
     setSidebarOpen(false);
-  };
+  }, []);
 
   // Handle view product details navigation
-  const handleViewProduct = (product) => {
+  const handleViewProduct = useCallback((product) => {
     setSelectedProductForDetails(product);
     setActiveTab('product-details');
     setSidebarOpen(false);
-  };
+  }, []);
 
   // Handle delete product
-  const handleDeleteProduct = async (product) => {
+  const handleDeleteProduct = useCallback(async (product) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
+        const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE}/products/${product._id}`, {
           method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
         
         if (response.ok) {
@@ -161,110 +322,22 @@ const AdminPanel = () => {
         alert('Error deleting product');
       }
     }
-  };
+  }, [API_BASE, activeTab]);
 
   // Handle back navigation from product details
-  const handleBackFromDetails = () => {
+  const handleBackFromDetails = useCallback(() => {
     setSelectedProductForDetails(null);
     setActiveTab('products');
-  };
+  }, []);
 
   // Handle edit from product details
-  const handleEditFromDetails = (product) => {
+  const handleEditFromDetails = useCallback((product) => {
     const productToEdit = product || selectedProductForDetails;
     setSelectedProductForEdit(productToEdit);
     setActiveTab('edit-product');
-  };
+  }, [selectedProductForDetails]);
 
-  // Fetch dashboard stats
-  const fetchStats = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE}/dashboard/stats`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setStats(data.stats);
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  }, []);
-
-  // Fetch analytics data
-  const fetchAnalytics = useCallback(async () => {
-    setAnalyticsLoading(true);
-    try {
-      // Sales Overview
-      const salesResponse = await fetch(`${API_BASE}/analytics/sales-overview?period=${analyticsPeriod}&year=${analyticsYear}`);
-      const salesData = await salesResponse.json();
-      if (salesData.success) {
-        setSalesData(salesData.data);
-      }
-
-      // Product Performance
-      const productResponse = await fetch(`${API_BASE}/analytics/product-performance?year=${analyticsYear}&month=${analyticsMonth}`);
-      const productData = await productResponse.json();
-      if (productData.success) {
-        setProductPerformance(productData.data);
-      }
-
-      // Category Performance
-      const categoryResponse = await fetch(`${API_BASE}/analytics/category-performance?year=${analyticsYear}`);
-      const categoryData = await categoryResponse.json();
-      if (categoryData.success) {
-        setCategoryPerformance(categoryData.data);
-      }
-
-      // Revenue Metrics
-      const revenueResponse = await fetch(`${API_BASE}/analytics/revenue-metrics`);
-      const revenueData = await revenueResponse.json();
-      if (revenueData.success) {
-        setRevenueMetrics(revenueData.metrics);
-      }
-    } catch (error) {
-      console.error('Error fetching analytics:', error);
-    } finally {
-      setAnalyticsLoading(false);
-    }
-  }, [analyticsPeriod, analyticsYear, analyticsMonth]);
-
-  // Generate sample data
-  const generateSampleData = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE}/generate-sample-data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        alert(`Generated ${data.salesGenerated} sample sales records`);
-        fetchAnalytics();
-      } else {
-        alert('Error generating sample data:' + data.message);
-      }
-    } catch (error) {
-      console.error('Error generating sample data:', error);
-      alert('Error generating sample data');
-    }
-  }, [fetchAnalytics]);
-
-  // Effects
-  useEffect(() => {
-    if (activeTab === 'dashboard') {
-      fetchStats();
-    }
-  }, [activeTab, fetchStats]);
-
-  useEffect(() => {
-    if (activeTab === 'analytics') {
-      fetchAnalytics();
-    }
-  }, [activeTab, fetchAnalytics]);
-
-  const formatChartData = (data) => {
+  const formatChartData = useCallback((data) => {
     if (!data || data.length === 0) return [];
     
     return data.map(item => {
@@ -286,7 +359,44 @@ const AdminPanel = () => {
         quantity: item.total_quantity
       };
     });
-  };
+  }, [analyticsPeriod, months]);
+
+  // ALL useEffect HOOKS AFTER ALL CALLBACKS
+  // Authentication check on component mount
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
+
+  // Effects
+  useEffect(() => {
+    if (activeTab === 'dashboard' && isAuthenticated) {
+      fetchStats();
+    }
+  }, [activeTab, fetchStats, isAuthenticated]);
+
+  useEffect(() => {
+    if (activeTab === 'analytics' && isAuthenticated) {
+      fetchAnalytics();
+    }
+  }, [activeTab, fetchAnalytics, isAuthenticated]);
+
+  // CONDITIONAL RENDERING - All hooks must be called before this point
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+          <Loader className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login form if not authenticated
+  if (!isAuthenticated) {
+    return <AdminLogin onLoginSuccess={handleLoginSuccess} />;
+  }
 
   // Analytics Component
   const Analytics = () => {
@@ -401,9 +511,6 @@ const AdminPanel = () => {
             </div>
           </div>
         </div>
-
-        {/* Charts and other analytics components remain the same */}
-        {/* ... rest of Analytics component ... */}
       </div>
     );
   };
@@ -515,6 +622,7 @@ const AdminPanel = () => {
     );
   };
 
+  // MAIN JSX RETURN
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Mobile menu button */}
@@ -530,7 +638,18 @@ const AdminPanel = () => {
       {/* Enhanced Sidebar with E-commerce Module */}
       <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b">
-          <h1 className="text-xl font-bold text-gray-800">Admin Panel</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold text-gray-800">Admin Panel</h1>
+            {adminData && (
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-green-500" />
+                <span className="text-xs text-gray-600">{adminData.role}</span>
+              </div>
+            )}
+          </div>
+          {adminData && (
+            <p className="text-sm text-gray-600 mt-1">Welcome, {adminData.name}</p>
+          )}
         </div>
         
         <nav className="mt-6">
@@ -667,6 +786,17 @@ const AdminPanel = () => {
             </button>
           </div>
         </nav>
+
+        {/* Logout Button at Bottom */}
+        <div className="absolute bottom-4 left-4 right-4">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Overlay for mobile */}
@@ -699,9 +829,16 @@ const AdminPanel = () => {
                     Add Product
                   </button>
                 )}
-                <span className="text-sm text-gray-600">
-                  Welcome, Admin
-                </span>
+                {adminData && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                      {adminData.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-sm text-gray-600">
+                      {adminData.name}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
