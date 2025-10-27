@@ -384,10 +384,16 @@ const AdminPanel = () => {
   // Show loading screen while checking authentication
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center">
-          <Loader className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Checking authentication...</p>
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 flex items-center justify-center">
+        <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl text-center border border-pink-100">
+          <div className="relative mb-4">
+            <div className="w-16 h-16 mx-auto bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-2xl">P</span>
+            </div>
+            <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-yellow-300 to-yellow-400 rounded-full animate-pulse"></div>
+          </div>
+          <Loader className="w-8 h-8 animate-spin mx-auto mb-4 text-pink-600" />
+          <p className="text-gray-700 font-medium">Checking authentication...</p>
         </div>
       </div>
     );
@@ -401,19 +407,19 @@ const AdminPanel = () => {
   // Analytics Component
   const Analytics = () => {
     const chartData = formatChartData(salesData);
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+    const COLORS = ['#ec4899', '#f43f5e', '#fb7185', '#f9a8d4', '#fbcfe8', '#fce7f3'];
 
     return (
       <div className="space-y-6">
         {/* Analytics Header */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <h2 className="text-2xl font-bold text-gray-800">Analytics Dashboard</h2>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">Analytics Dashboard</h2>
             <div className="flex flex-wrap gap-3">
               <select
                 value={analyticsPeriod}
                 onChange={(e) => setAnalyticsPeriod(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-4 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 bg-white"
               >
                 {periods.map(period => (
                   <option key={period} value={period}>
@@ -425,7 +431,7 @@ const AdminPanel = () => {
               <select
                 value={analyticsYear}
                 onChange={(e) => setAnalyticsYear(parseInt(e.target.value))}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-4 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 bg-white"
               >
                 {[2023, 2024, 2025].map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -435,7 +441,7 @@ const AdminPanel = () => {
               <select
                 value={analyticsMonth}
                 onChange={(e) => setAnalyticsMonth(parseInt(e.target.value))}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-4 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 bg-white"
               >
                 {months.map(month => (
                   <option key={month.value} value={month.value}>
@@ -447,7 +453,7 @@ const AdminPanel = () => {
               <button
                 onClick={fetchAnalytics}
                 disabled={analyticsLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 transition-colors disabled:opacity-50 shadow-md"
               >
                 <RefreshCw className={`w-4 h-4 ${analyticsLoading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -455,7 +461,7 @@ const AdminPanel = () => {
               
               <button
                 onClick={generateSampleData}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-colors shadow-md"
               >
                 <Upload className="w-4 h-4" />
                 Generate Sample Data
@@ -466,48 +472,60 @@ const AdminPanel = () => {
 
         {/* Revenue Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100 hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Today Revenue</p>
-                <p className="text-2xl font-bold text-green-600">${revenueMetrics.today || 0}</p>
+                <p className="text-sm text-gray-600 font-medium">Today Revenue</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">${revenueMetrics.today || 0}</p>
               </div>
-              <DollarSign className="w-8 h-8 text-green-500" />
+              <div className="p-3 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl shadow-md">
+                <DollarSign className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100 hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Monthly Revenue</p>
-                <p className="text-2xl font-bold text-blue-600">${revenueMetrics.month || 0}</p>
-                <p className="text-xs text-gray-500">
-                  {revenueMetrics.monthGrowth >= 0 ? '+' : ''}{revenueMetrics.monthGrowth || 0}% from last month
-                </p>
+             <div>
+  <p className="text-sm text-gray-600 font-medium">Monthly Revenue</p>
+  <p className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+    ${Number(revenueMetrics.month || 0).toFixed(2)}
+  </p>
+  <p className="text-xs text-gray-500">
+    {revenueMetrics.monthGrowth >= 0 ? '+' : ''}
+    {Number(revenueMetrics.monthGrowth || 0).toFixed(2)}% from last month
+  </p>
+</div>
+
+              <div className="p-3 bg-gradient-to-br from-pink-400 to-rose-500 rounded-xl shadow-md">
+                <BarChart3 className="w-8 h-8 text-white" />
               </div>
-              <BarChart3 className="w-8 h-8 text-blue-500" />
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100 hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Yearly Revenue</p>
-                <p className="text-2xl font-bold text-purple-600">${revenueMetrics.year || 0}</p>
+                <p className="text-sm text-gray-600 font-medium">Yearly Revenue</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">${revenueMetrics.year || 0}</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-purple-500" />
+              <div className="p-3 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl shadow-md">
+                <TrendingUp className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100 hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Avg Order Value</p>
-                <p className="text-2xl font-bold text-orange-600">
+                <p className="text-sm text-gray-600 font-medium">Avg Order Value</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
                   ${((revenueMetrics.month || 0) / Math.max(salesData.reduce((acc, item) => acc + (item.total_orders || 0), 0), 1)).toFixed(2)}
                 </p>
               </div>
-              <ShoppingBag className="w-8 h-8 text-orange-500" />
+              <div className="p-3 bg-gradient-to-br from-orange-400 to-rose-500 rounded-xl shadow-md">
+                <ShoppingBag className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
         </div>
@@ -549,62 +567,70 @@ const AdminPanel = () => {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100 hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Products</p>
-                <p className="text-2xl font-bold">{stats.totalProducts || 0}</p>
+                <p className="text-sm text-gray-600 font-medium">Total Products</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">{stats.totalProducts || 0}</p>
               </div>
-              <Package className="w-8 h-8 text-blue-500" />
+              <div className="p-3 bg-gradient-to-br from-pink-400 to-rose-500 rounded-xl shadow-md">
+                <Package className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100 hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Active Products</p>
-                <p className="text-2xl font-bold">{stats.activeProducts || 0}</p>
+                <p className="text-sm text-gray-600 font-medium">Active Products</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">{stats.activeProducts || 0}</p>
               </div>
-              <Eye className="w-8 h-8 text-green-500" />
+              <div className="p-3 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl shadow-md">
+                <Eye className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100 hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Inactive Products</p>
-                <p className="text-2xl font-bold">{stats.inactiveProducts || 0}</p>
+                <p className="text-sm text-gray-600 font-medium">Inactive Products</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">{stats.inactiveProducts || 0}</p>
               </div>
-              <EyeOff className="w-8 h-8 text-red-500" />
+              <div className="p-3 bg-gradient-to-br from-red-400 to-rose-500 rounded-xl shadow-md">
+                <EyeOff className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100 hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Categories</p>
-                <p className="text-2xl font-bold">{stats.categoryStats?.length || 0}</p>
+                <p className="text-sm text-gray-600 font-medium">Categories</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">{stats.categoryStats?.length || 0}</p>
               </div>
-              <ShoppingBag className="w-8 h-8 text-purple-500" />
+              <div className="p-3 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl shadow-md">
+                <ShoppingBag className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Products by Category</h3>
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100">
+            <h3 className="text-lg font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-4">Products by Category</h3>
             <div className="space-y-3">
               {stats.categoryStats?.map((cat, index) => (
                 <div key={index} className="flex justify-between items-center">
-                  <span className="text-gray-700">{cat._id}</span>
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">{cat.count}</span>
+                  <span className="text-gray-700 font-medium">{cat._id}</span>
+                  <span className="bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 px-3 py-1 rounded-lg text-sm font-semibold">{cat.count}</span>
                 </div>
               ))}
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Recent Products</h3>
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100">
+            <h3 className="text-lg font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-4">Recent Products</h3>
             <div className="space-y-3">
               {stats.recentProducts?.map((product, index) => (
                 <div key={index} className="flex items-center space-x-3">
@@ -624,31 +650,50 @@ const AdminPanel = () => {
 
   // MAIN JSX RETURN
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-pink-50/20 to-rose-50/30">
       {/* Mobile menu button */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="bg-white p-2 rounded-lg shadow-md"
+          className="bg-gradient-to-br from-pink-500 to-rose-500 p-2 rounded-lg shadow-lg hover:shadow-xl transition-all"
         >
-          <Menu className="w-6 h-6" />
+          <Menu className="w-6 h-6 text-white" />
         </button>
       </div>
 
-      {/* Enhanced Sidebar with E-commerce Module */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 border-b">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-800">Admin Panel</h1>
-            {adminData && (
-              <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-green-500" />
-                <span className="text-xs text-gray-600">{adminData.role}</span>
+      {/* Enhanced Sidebar with E-commerce Module - Pink Dreams Theme */}
+      <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-br from-white via-pink-50/30 to-rose-50/40 shadow-2xl border-r border-pink-100 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-pink-100 bg-white/80 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-12 h-12 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-white font-bold text-xl">P</span>
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-300 to-yellow-400 rounded-full animate-pulse"></div>
               </div>
-            )}
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 bg-clip-text text-transparent">
+                  Pink Dreams
+                </h1>
+                <p className="text-xs text-gray-500">Admin Panel</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden text-gray-500 hover:text-pink-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
           {adminData && (
-            <p className="text-sm text-gray-600 mt-1">Welcome, {adminData.name}</p>
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-pink-100">
+              <Shield className="w-5 h-5 text-pink-500" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-700">{adminData.name}</p>
+                <span className="text-xs text-gray-500">{adminData.role}</span>
+              </div>
+            </div>
           )}
         </div>
         
@@ -661,8 +706,8 @@ const AdminPanel = () => {
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 activeTab === 'dashboard' 
-                  ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700' 
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
+                  : 'text-gray-600 hover:bg-pink-50/50'
               }`}
             >
               <Home className="w-5 h-5" />
@@ -675,8 +720,8 @@ const AdminPanel = () => {
                 onClick={() => setEcommerceOpen(!ecommerceOpen)}
                 className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${
                   ['add-product', 'products', 'product-details', 'edit-product'].includes(activeTab)
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md'
+                    : 'text-gray-600 hover:bg-pink-50/50'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -699,8 +744,8 @@ const AdminPanel = () => {
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
                     activeTab === 'add-product' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-gray-600 hover:bg-gray-50'
+                      ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
+                      : 'text-gray-600 hover:bg-pink-50/50'
                   }`}
                 >
                   <Plus className="w-4 h-4" />
@@ -714,8 +759,8 @@ const AdminPanel = () => {
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
                     activeTab === 'products' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-gray-600 hover:bg-gray-50'
+                      ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
+                      : 'text-gray-600 hover:bg-pink-50/50'
                   }`}
                 >
                   <Package className="w-4 h-4" />
@@ -729,8 +774,8 @@ const AdminPanel = () => {
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
                     activeTab === 'product-details' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-gray-600 hover:bg-gray-50'
+                      ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
+                      : 'text-gray-600 hover:bg-pink-50/50'
                   }`}
                 >
                   <Eye className="w-4 h-4" />
@@ -744,8 +789,8 @@ const AdminPanel = () => {
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
                     activeTab === 'edit-product' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-gray-600 hover:bg-gray-50'
+                      ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
+                      : 'text-gray-600 hover:bg-pink-50/50'
                   }`}
                 >
                   <Edit className="w-4 h-4" />
@@ -762,8 +807,8 @@ const AdminPanel = () => {
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 activeTab === 'orders' 
-                  ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700' 
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
+                  : 'text-gray-600 hover:bg-pink-50/50'
               }`}
             >
               <ShoppingBag className="w-5 h-5" />
@@ -777,8 +822,8 @@ const AdminPanel = () => {
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 activeTab === 'analytics' 
-                  ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700' 
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
+                  : 'text-gray-600 hover:bg-pink-50/50'
               }`}
             >
               <BarChart3 className="w-5 h-5" />
@@ -808,12 +853,12 @@ const AdminPanel = () => {
       )}
 
       {/* Main content */}
-      <div className="lg:ml-64 min-h-screen">
+      <div className="lg:ml-64 min-h-screen bg-gradient-to-br from-gray-50 via-pink-50/20 to-rose-50/30">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b">
+        <header className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-pink-100">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-gray-800 capitalize">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 bg-clip-text text-transparent capitalize">
                 {activeTab === 'add-product' ? 'Add Product' : 
                  activeTab === 'product-details' ? 'Product Details' :
                  activeTab === 'edit-product' ? 'Edit Product' : activeTab}
@@ -823,7 +868,7 @@ const AdminPanel = () => {
                   activeTab === 'product-details' || activeTab === 'edit-product') && (
                   <button
                     onClick={() => setActiveTab('add-product')}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all shadow-md hover:shadow-lg"
                   >
                     <Plus className="w-4 h-4" />
                     Add Product
@@ -831,10 +876,10 @@ const AdminPanel = () => {
                 )}
                 {adminData && (
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                    <div className="w-8 h-8 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-md">
                       {adminData.name?.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-gray-700 font-medium">
                       {adminData.name}
                     </span>
                   </div>
@@ -871,14 +916,14 @@ const AdminPanel = () => {
                 onBack={handleBackFromDetails}
               />
             ) : (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Product Details</h3>
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100">
+                <h3 className="text-lg font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-4">Product Details</h3>
                 <p className="text-gray-600 mb-4">
                   Select a product from the products list to view detailed information.
                 </p>
                 <button
                   onClick={() => setActiveTab('products')}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all shadow-md hover:shadow-lg"
                 >
                   <Package className="w-4 h-4" />
                   Go to Products List
@@ -901,14 +946,14 @@ const AdminPanel = () => {
                 }}
               />
             ) : (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Edit Product</h3>
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100">
+                <h3 className="text-lg font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-4">Edit Product</h3>
                 <p className="text-gray-600 mb-4">
                   Select a product from the products list to edit.
                 </p>
                 <button
                   onClick={() => setActiveTab('products')}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all shadow-md hover:shadow-lg"
                 >
                   <Package className="w-4 h-4" />
                   Go to Products List

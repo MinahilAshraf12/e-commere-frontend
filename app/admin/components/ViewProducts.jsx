@@ -440,7 +440,7 @@ const ViewProducts = ({ onEditProduct, onViewProduct, onDeleteProduct }) => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
                           onClick={() => handleViewImages(product)}
-                          className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                          className="flex items-center gap-2 px-3 py-1 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors"
                           disabled={imageCount === 0}
                         >
                           <Eye className="w-4 h-4" />
@@ -450,7 +450,7 @@ const ViewProducts = ({ onEditProduct, onViewProduct, onDeleteProduct }) => {
                         </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                        <span className="px-2 py-1 text-xs font-medium bg-pink-50 text-pink-600 rounded-full">
                           {product.category}
                         </span>
                       </td>
