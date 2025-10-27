@@ -58,7 +58,23 @@ const ProductCard = ({ product }) => {
 
   // Set up image source
   useEffect(() => {
-    const mainImage = product.image || (product.images && product.images[0]) || null
+    // Priority 1: Check images array first (handles bulk upload + edit scenario)
+    let mainImage = null;
+    
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      // Filter out empty strings and whitespace
+      const validImages = product.images.filter(img => img && img.trim() !== '');
+      if (validImages.length > 0) {
+        mainImage = validImages[0];
+      }
+    }
+    
+    // Priority 2: Fallback to single image field
+    if (!mainImage && product.image && product.image.trim() !== '') {
+      mainImage = product.image;
+    }
+    
+    // Set image source or use fallback
     if (mainImage) {
       setImageSrc(getImageSrc(mainImage))
       setImageError(false)
