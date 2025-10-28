@@ -1,613 +1,547 @@
-// pages/cart/page.js
 'use client'
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, CreditCard, Lock, AlertCircle, RefreshCw } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  Trash2, Plus, Minus, ShoppingCart, ArrowRight, 
+  Tag, Percent, X, Gift, Truck, Shield, Heart,
+  AlertCircle, Check
+} from 'lucide-react'
 import Link from 'next/link'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
-import { useCart } from '../context/CartContext' // Import from CartContext
+import { useCart } from '../context/CartContext'
+import { useAuth } from '../context/AuthContext'
 import { toast } from 'react-toastify'
 import { getImageSrc, handleImageError } from '../utils/imageUtils'
 
-
 export default function CartPage() {
-  const { 
-    cart, 
-    isLoading,
-    error,
-    removeFromCart, 
-    updateQuantity, 
-    increaseQuantity,
-    decreaseQuantity,
-    clearCart,
-    getTotalItems, 
-    getTotalPrice,
-    loadCart
-  } = useCart()
-
-  const [promoCode, setPromoCode] = useState('')
-  const [isApplyingPromo, setIsApplyingPromo] = useState(false)
-  const [promoDiscount, setPromoDiscount] = useState(0)
-  const [promoMessage, setPromoMessage] = useState('')
-  const [editingQuantity, setEditingQuantity] = useState({}) // Track which items are being edited
-  const [tempQuantity, setTempQuantity] = useState({}) // Store temporary quantity values
-  const [isRemoving, setIsRemoving] = useState({}) // Track which items are being removed
-
-  // Load cart on component mount
-  useEffect(() => {
-    loadCart()
-  }, [])
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(price)
-  }
-
-  const shipping = getTotalPrice() > 75 ? 0 : 9.99 // Free shipping over $75
-  const tax = getTotalPrice() * 0.08 // 8% tax
-  const subtotal = getTotalPrice()
-  const finalTotal = subtotal + shipping + tax - promoDiscount
-
-  // Handle quantity input editing
-  const handleQuantityClick = (itemId, currentQuantity) => {
-    setEditingQuantity(prev => ({ ...prev, [itemId]: true }))
-    setTempQuantity(prev => ({ ...prev, [itemId]: currentQuantity.toString() }))
-  }
-
-  const handleQuantityChange = (itemId, value) => {
-    // Only allow positive integers
-    const sanitizedValue = value.replace(/[^0-9]/g, '')
-    setTempQuantity(prev => ({ ...prev, [itemId]: sanitizedValue }))
-  }
-
-  const handleQuantitySubmit = async (itemId, stockQuantity) => {
-    const newQuantity = parseInt(tempQuantity[itemId]) || 1
+    const router = useRouter()
+    const { 
+        cart, 
+        removeFromCart, 
+        updateQuantity, 
+        getTotalPrice, 
+        getTotalItems, 
+        clearCart 
+    } = useCart()
+    const { user } = useAuth()
     
-    // Validate quantity
-    let finalQuantity = Math.max(1, newQuantity) // Minimum 1
-    if (stockQuantity !== undefined) {
-      finalQuantity = Math.min(finalQuantity, stockQuantity) // Don't exceed stock
-    }
-    
-    try {
-      await updateQuantity(itemId, finalQuantity)
-      setEditingQuantity(prev => ({ ...prev, [itemId]: false }))
-      setTempQuantity(prev => ({ ...prev, [itemId]: '' }))
-    } catch (error) {
-      console.error('Error updating quantity:', error)
-      toast.error('Failed to update quantity')
-    }
-  }
+    // Promo code states
+    const [promoCode, setPromoCode] = useState('')
+    const [appliedPromo, setAppliedPromo] = useState(null)
+    const [isApplyingPromo, setIsApplyingPromo] = useState(false)
+    const [promoError, setPromoError] = useState('')
 
-  const handleQuantityBlur = (itemId, stockQuantity) => {
-    handleQuantitySubmit(itemId, stockQuantity)
-  }
-
-  const handleQuantityKeyPress = (e, itemId, stockQuantity) => {
-    if (e.key === 'Enter') {
-      handleQuantitySubmit(itemId, stockQuantity)
-    } else if (e.key === 'Escape') {
-      setEditingQuantity(prev => ({ ...prev, [itemId]: false }))
-      setTempQuantity(prev => ({ ...prev, [itemId]: '' }))
-    }
-  }
-
-  const handleApplyPromoCode = async () => {
-    setIsApplyingPromo(true)
-    setPromoMessage('')
-    
-    // Simulate promo code validation
-    setTimeout(() => {
-      const code = promoCode.toLowerCase().trim()
-      
-      if (code === 'save10') {
-        const discount = subtotal * 0.1
-        setPromoDiscount(discount)
-        setPromoMessage(`Promo code applied! You saved ${formatPrice(discount)}`)
-      } else if (code === 'welcome5') {
-        setPromoDiscount(5)
-        setPromoMessage('Welcome! You saved $5.00')
-      } else if (code === 'freeship') {
-        if (shipping > 0) {
-          setPromoDiscount(shipping)
-          setPromoMessage('Free shipping applied!')
-        } else {
-          setPromoMessage('Free shipping is already active')
+    // ✅ Load applied promo code from localStorage on mount
+    useEffect(() => {
+        try {
+            const storedPromo = localStorage.getItem('appliedPromoCode')
+            if (storedPromo) {
+                const promoData = JSON.parse(storedPromo)
+                setAppliedPromo(promoData)
+                console.log('✅ Loaded promo from localStorage:', promoData)
+            }
+        } catch (error) {
+            console.error('Error loading promo from localStorage:', error)
+            localStorage.removeItem('appliedPromoCode')
         }
-      } else {
-        setPromoMessage('Invalid promo code. Try: SAVE10, WELCOME5, or FREESHIP')
-        setPromoDiscount(0)
-      }
-      setIsApplyingPromo(false)
-    }, 1000)
-  }
+    }, [])
 
-  const handleRefreshCart = async () => {
-    try {
-      await loadCart()
-      toast.success('Cart refreshed!')
-    } catch (error) {
-      toast.error('Failed to refresh cart')
-    }
-  }
+    // ✅ Re-validate promo when cart changes
+    useEffect(() => {
+        if (appliedPromo && cart.length > 0) {
+            // Re-validate promo with new cart total
+            revalidatePromo()
+        }
+    }, [cart])
 
-  // Handle remove item with better UX
-  const handleRemoveItem = async (item) => {
-    // Set removing state to show loading
-    setIsRemoving(prev => ({ ...prev, [item.id]: true }))
-    
-    try {
-      await removeFromCart(item.id)
-      
-      // Show success message
-      toast.success(`${item.name} removed from cart!`, {
-        position: "top-right",
-        autoClose: 3000,
-      })
-      
-      // Clear promo if cart becomes empty
-      if (cart.length <= 1) {
-        removePromoCode()
-      }
-    } catch (error) {
-      console.error('Error removing item:', error)
-      toast.error('Failed to remove item from cart')
-    } finally {
-      // Clear removing state
-      setIsRemoving(prev => ({ ...prev, [item.id]: false }))
-    }
-  }
+    // ✅ Apply promo code function
+    const handleApplyPromoCode = async () => {
+        if (!promoCode.trim()) {
+            setPromoError('Please enter a promo code')
+            toast.error('Please enter a promo code')
+            return
+        }
 
-  const removePromoCode = () => {
-    setPromoCode('')
-    setPromoDiscount(0)
-    setPromoMessage('')
-  }
+        setIsApplyingPromo(true)
+        setPromoError('')
+        
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/promo-codes/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: promoCode.toUpperCase(),
+                    userId: user?.id || null,
+                    cartTotal: getTotalPrice(),
+                    cartItems: cart
+                })
+            })
 
-  // Loading state
-  if (isLoading && cart.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your cart...</p>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    )
-  }
-
-  // Error state
-  if (error && cart.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="py-8">
-          <div className="container mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-center py-16"
-            >
-              <AlertCircle className="w-24 h-24 mx-auto text-red-400 mb-8" />
-              <h1 className="text-3xl font-bold text-gray-800 mb-4">Error Loading Cart</h1>
-              <p className="text-gray-600 mb-8">{error}</p>
-              <div className="space-x-4">
-                <button
-                  onClick={handleRefreshCart}
-                  className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors inline-flex items-center space-x-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Retry</span>
-                </button>
-                <Link href="/shop">
-                  <button className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors">
-                    Continue Shopping
-                  </button>
-                </Link>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    )
-  }
-
-  // Empty cart state
-  if (!isLoading && cart.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="py-8">
-          <div className="container mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-center py-16"
-            >
-              <ShoppingBag className="w-24 h-24 mx-auto text-gray-300 mb-8" />
-              <h1 className="text-3xl font-bold text-gray-800 mb-4">Your Cart is Empty</h1>
-              <p className="text-gray-600 mb-8">
-                Looks like you haven't added any items to your cart yet.
-              </p>
-              <Link href="/shop">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-gradient-to-r from-pink-500 to-pink-600 text-white px-8 py-3 rounded-full font-semibold hover:from-pink-600 hover:to-pink-700 transition-all duration-300 shadow-lg"
-                >
-                  Continue Shopping
-                </motion.button>
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="py-8">
-        <div className="container mx-auto px-4">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-8"
-          >
-            <Link href="/shop" className="inline-flex items-center text-pink-600 hover:text-pink-700 mb-4 transition-colors">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Continue Shopping
-            </Link>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-800">Shopping Cart</h1>
-                <p className="text-gray-600 mt-2">
-                  {getTotalItems()} {getTotalItems() === 1 ? 'item' : 'items'} in your cart
-                </p>
-              </div>
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={handleRefreshCart}
-                  disabled={isLoading}
-                  className="text-blue-500 hover:text-blue-600 font-medium inline-flex items-center space-x-1 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span>Refresh</span>
-                </button>
-                {cart.length > 0 && (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={async () => {
-                      if (window.confirm('Are you sure you want to clear your entire cart?')) {
-                        try {
-                          await clearCart()
-                          removePromoCode()
-                          toast.success('Cart cleared successfully!')
-                        } catch (error) {
-                          toast.error('Failed to clear cart')
-                        }
-                      }
-                    }}
-                    disabled={isLoading}
-                    className="text-red-500 hover:text-red-600 font-medium transition-colors disabled:opacity-50"
-                  >
-                    Clear All
-                  </motion.button>
-                )}
-              </div>
-            </div>
-          </motion.div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Cart Items */}
-            <div className="lg:col-span-2">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-white rounded-2xl shadow-lg overflow-hidden"
-              >
-                <div className="p-6">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-6">Cart Items</h2>
-                  <div className="space-y-6">
-                    {cart.map((item, index) => (
-                      <motion.div
-                        key={`${item.id}-${index}`}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20, height: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.1 }}
-                        className={`flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 p-4 border border-gray-200 rounded-xl hover:shadow-md transition-all duration-300 ${
-                          isRemoving[item.id] ? 'opacity-50 pointer-events-none' : ''
-                        }`}
-                      >
-                        {/* Product Image */}
-                        <div className="w-20 h-20 bg-gradient-to-br from-pink-100 to-pink-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-                          {item.image ? (
-                           <img
-                              src={getImageSrc(item.image)}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                              onError={handleImageError}
-                              loading="lazy"
-                            />
-                          ) : (
-                            <ShoppingBag className="w-8 h-8 text-pink-400" />
-                          )}
-                        </div>
-
-                        {/* Product Details */}
-                        <div className="flex-1 w-full">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-gray-800 mb-1">{item.name}</h3>
-                              {item.category && (
-                                <p className="text-sm text-gray-500 mb-2 capitalize">{item.category}</p>
-                              )}
-                              
-                              {/* Stock Status */}
-                              {item.stock_quantity !== undefined && (
-                                <div className="mb-2">
-                                  {item.stock_quantity === 0 ? (
-                                    <span className="text-red-500 text-xs font-medium bg-red-50 px-2 py-1 rounded">
-                                      Out of Stock
-                                    </span>
-                                  ) : item.stock_quantity < 5 ? (
-                                    <span className="text-orange-500 text-xs font-medium bg-orange-50 px-2 py-1 rounded">
-                                      Only {item.stock_quantity} left
-                                    </span>
-                                  ) : (
-                                    <span className="text-green-500 text-xs font-medium bg-green-50 px-2 py-1 rounded">
-                                      In Stock
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                              {/* Quantity Controls */}
-                              <div className="flex items-center border border-gray-300 rounded-lg">
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={() => decreaseQuantity(item.id)}
-                                  disabled={isLoading || item.quantity <= 1}
-                                  className="p-2 hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50"
-                                >
-                                  <Minus className="w-4 h-4" />
-                                </motion.button>
-                                
-                                {/* Editable Quantity Display */}
-                                {editingQuantity[item.id] ? (
-                                  <input
-                                    type="text"
-                                    value={tempQuantity[item.id] || ''}
-                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                    onBlur={() => handleQuantityBlur(item.id, item.stock_quantity)}
-                                    onKeyDown={(e) => handleQuantityKeyPress(e, item.id, item.stock_quantity)}
-                                    className="w-12 px-2 py-2 text-center font-medium border-none outline-none focus:bg-blue-50"
-                                    autoFocus
-                                    maxLength="3"
-                                  />
-                                ) : (
-                                  <button
-                                    onClick={() => handleQuantityClick(item.id, item.quantity)}
-                                    className="px-4 py-2 font-medium min-w-[3rem] text-center hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
-                                    title="Click to edit quantity"
-                                  >
-                                    {item.quantity}
-                                  </button>
-                                )}
-                                
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={() => increaseQuantity(item.id)}
-                                  disabled={isLoading || (item.stock_quantity !== undefined && item.quantity >= item.stock_quantity)}
-                                  className="p-2 hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50"
-                                >
-                                  <Plus className="w-4 h-4" />
-                                </motion.button>
-                              </div>
-
-                              {/* Price */}
-                              <div className="text-right">
-                                <p className="font-semibold text-gray-800">
-                                  {formatPrice(item.price * item.quantity)}
-                                </p>
-                                {item.quantity > 1 && (
-                                  <p className="text-sm text-gray-500">
-                                    {formatPrice(item.price)} each
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Remove Button */}
-                              <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => handleRemoveItem(item)}
-                                disabled={isLoading || isRemoving[item.id]}
-                                className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 disabled:opacity-50 relative"
-                              >
-                                {isRemoving[item.id] ? (
-                                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
-                                ) : (
-                                  <Trash2 className="w-5 h-5" />
-                                )}
-                              </motion.button>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-
-            {/* Order Summary */}
-            <div className="lg:col-span-1">
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="bg-white rounded-2xl shadow-lg p-6 sticky top-8"
-              >
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">Order Summary</h2>
+            const data = await response.json()
+            
+            if (data.success) {
+                // ✅ CRITICAL: Store complete promo data with discount amount
+                const promoData = {
+                    code: data.promoCode.code,
+                    title: data.promoCode.title,
+                    description: data.promoCode.description,
+                    discountType: data.promoCode.discountType,
+                    discountValue: data.promoCode.discountValue,
+                    discount: {
+                        amount: data.discount.amount,      // ← CRITICAL FIELD
+                        type: data.discount.type,
+                        value: data.discount.value
+                    },
+                    originalAmount: data.originalAmount,
+                    finalAmount: data.finalAmount,
+                    savings: data.savings
+                }
                 
-                {/* Summary Details */}
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal ({getTotalItems()} items)</span>
-                    <span className="font-medium">{formatPrice(subtotal)}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Shipping</span>
-                    <span className={`font-medium ${shipping === 0 ? 'text-green-600' : ''}`}>
-                      {shipping === 0 ? 'FREE' : formatPrice(shipping)}
-                    </span>
-                  </div>
-                  
-                  {shipping > 0 && subtotal < 75 && (
-                    <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
-                      💡 Add {formatPrice(75 - subtotal)} more for free shipping!
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tax</span>
-                    <span className="font-medium">{formatPrice(tax)}</span>
-                  </div>
-                  
-                  {promoDiscount > 0 && (
-                    <div className="flex justify-between text-green-600 bg-green-50 p-2 rounded">
-                      <span>Promo Discount</span>
-                      <span className="font-medium">-{formatPrice(promoDiscount)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-semibold text-gray-800">Total</span>
-                      <span className="text-2xl font-bold text-pink-600">
-                        {formatPrice(finalTotal)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                // Store in localStorage
+                localStorage.setItem('appliedPromoCode', JSON.stringify(promoData))
+                
+                // Update state
+                setAppliedPromo(promoData)
+                setPromoCode('')
+                
+                toast.success(`🎉 Promo code "${data.promoCode.code}" applied! You saved $${data.savings.toFixed(2)}`)
+                
+                console.log('✅ Promo code applied successfully:', promoData)
+                console.log('💾 Stored in localStorage:', localStorage.getItem('appliedPromoCode'))
+            } else {
+                setPromoError(data.message || 'Invalid promo code')
+                toast.error(data.message || 'Invalid promo code')
+            }
+        } catch (error) {
+            console.error('❌ Error applying promo code:', error)
+            setPromoError('Failed to apply promo code. Please try again.')
+            toast.error('Failed to apply promo code')
+        } finally {
+            setIsApplyingPromo(false)
+        }
+    }
 
-                {/* Checkout Button */}
-                <Link href="/checkout">
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        disabled={isLoading || cart.length === 0}
-                        className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-4 rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 transition-all duration-300 shadow-lg mt-6 flex items-center justify-center space-x-2 disabled:opacity-50"
+    // ✅ Re-validate promo code (when cart changes)
+    const revalidatePromo = async () => {
+        if (!appliedPromo) return
+
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/promo-codes/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: appliedPromo.code,
+                    userId: user?.id || null,
+                    cartTotal: getTotalPrice(),
+                    cartItems: cart
+                })
+            })
+
+            const data = await response.json()
+            
+            if (data.success) {
+                // Update promo data with new discount amount
+                const updatedPromoData = {
+                    ...appliedPromo,
+                    discount: {
+                        amount: data.discount.amount,
+                        type: data.discount.type,
+                        value: data.discount.value
+                    },
+                    originalAmount: data.originalAmount,
+                    finalAmount: data.finalAmount,
+                    savings: data.savings
+                }
+                
+                localStorage.setItem('appliedPromoCode', JSON.stringify(updatedPromoData))
+                setAppliedPromo(updatedPromoData)
+                
+                console.log('✅ Promo re-validated:', updatedPromoData)
+            } else {
+                // Promo no longer valid
+                handleRemovePromo()
+                toast.warning(data.message || 'Promo code is no longer valid')
+            }
+        } catch (error) {
+            console.error('Error re-validating promo:', error)
+        }
+    }
+
+    // ✅ Remove promo code
+    const handleRemovePromo = () => {
+        localStorage.removeItem('appliedPromoCode')
+        setAppliedPromo(null)
+        setPromoCode('')
+        setPromoError('')
+        toast.info('Promo code removed')
+        console.log('🗑️ Promo code removed from localStorage')
+    }
+
+    // ✅ Handle key press in promo input
+    const handlePromoKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleApplyPromoCode()
+        }
+    }
+
+    // ✅ Calculate totals with discount
+    const subtotal = getTotalPrice()
+    const shipping = subtotal > 75 ? 0 : 9.99
+    const discount = appliedPromo?.discount?.amount || 0
+    const taxableAmount = Math.max(0, subtotal - discount)
+    const tax = taxableAmount * 0.08 // 8% tax
+    const total = subtotal + shipping + tax - discount
+
+    console.log('💵 Cart Calculation:', {
+        subtotal,
+        discount,
+        shipping,
+        tax,
+        total,
+        appliedPromo
+    })
+
+    // ✅ Navigate to checkout with promo data
+    const handleProceedToCheckout = () => {
+        if (cart.length === 0) {
+            toast.error('Your cart is empty')
+            return
+        }
+
+        // Ensure promo data is stored in localStorage
+        if (appliedPromo) {
+            localStorage.setItem('appliedPromoCode', JSON.stringify(appliedPromo))
+            
+            // Pass via URL as backup
+            const encodedPromo = encodeURIComponent(JSON.stringify(appliedPromo))
+            
+            console.log('🚀 Navigating to checkout with promo:', appliedPromo)
+            console.log('💾 localStorage check:', localStorage.getItem('appliedPromoCode'))
+            
+            router.push(`/checkout?promo=${encodedPromo}`)
+        } else {
+            console.log('🚀 Navigating to checkout without promo')
+            router.push('/checkout')
+        }
+    }
+
+    // Empty cart state
+    if (cart.length === 0) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
+                <Header />
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center"
                     >
-                        <CreditCard className="w-5 h-5" />
-                        <span>Proceed to Checkout</span>
-                    </motion.button>
-                </Link>
-
-                {/* Security Notice */}
-                <div className="flex items-center justify-center space-x-2 mt-4 text-sm text-gray-500">
-                  <Lock className="w-4 h-4" />
-                  <span>Secure checkout with SSL encryption</span>
-                </div>
-
-                {/* Promo Code */}
-                <div className="mt-6 pt-6 border-t">
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium text-gray-700">
-                      Have a promo code?
-                    </label>
-                    {promoDiscount > 0 ? (
-                      <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
-                        <span className="text-green-700 text-sm font-medium">
-                          Code: {promoCode.toUpperCase()}
-                        </span>
-                        <button
-                          onClick={removePromoCode}
-                          className="text-red-500 hover:text-red-600 text-sm font-medium"
+                        <ShoppingCart className="w-32 h-32 mx-auto text-gray-300 mb-6" />
+                        <h2 className="text-3xl font-bold text-gray-800 mb-4">Your cart is empty</h2>
+                        <p className="text-gray-600 mb-8">Add some amazing products to get started!</p>
+                        <Link 
+                            href="/shop"
+                            className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:from-pink-600 hover:to-pink-700 transition-all shadow-lg font-semibold"
                         >
-                          Remove
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex space-x-2">
-                          <input
-                            type="text"
-                            placeholder="Enter code"
-                            value={promoCode}
-                            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                          />
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={handleApplyPromoCode}
-                            disabled={!promoCode.trim() || isApplyingPromo}
-                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50"
-                          >
-                            {isApplyingPromo ? 'Applying...' : 'Apply'}
-                          </motion.button>
-                        </div>
-                        {promoMessage && (
-                          <div className={`text-xs p-2 rounded ${
-                            promoDiscount > 0 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'
-                          }`}>
-                            {promoMessage}
-                          </div>
-                        )}
-                        <div className="text-xs text-gray-500">
-                          Try: SAVE10 (10% off), WELCOME5 ($5 off), or FREESHIP
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                            Continue Shopping
+                            <ArrowRight className="ml-2 w-5 h-5" />
+                        </Link>
+                    </motion.div>
+                </div>
+                <Footer />
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
+            <Header />
+            
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                {/* Header */}
+                <div className="mb-8">
+                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+                        Shopping Cart
+                    </h1>
+                    <p className="text-gray-600">
+                        {getTotalItems()} {getTotalItems() === 1 ? 'item' : 'items'} in your cart
+                    </p>
                 </div>
 
-                {/* Estimated Delivery */}
-                <div className="mt-6 pt-6 border-t">
-                  <div className="text-sm">
-                    <p className="font-medium text-gray-700 mb-2">Estimated Delivery</p>
-                    <div className="space-y-1">
-                      <p className="text-gray-600 flex justify-between">
-                        <span>Standard shipping:</span>
-                        <span>5-7 business days</span>
-                      </p>
-                      <p className="text-gray-600 flex justify-between">
-                        <span>Express shipping:</span>
-                        <span>2-3 business days</span>
-                      </p>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Side - Cart Items */}
+                    <div className="lg:col-span-2 space-y-4">
+                        <AnimatePresence>
+                            {cart.map((item) => (
+                                <motion.div
+                                    key={`${item.id}-${item.size}`}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, x: -100 }}
+                                    className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+                                >
+                                    <div className="flex items-center space-x-6">
+                                        {/* Product Image */}
+                                        <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                                            <img
+                                                src={getImageSrc(item.image)}
+                                                alt={item.name}
+                                                onError={handleImageError}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+
+                                        {/* Product Details */}
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-lg font-bold text-gray-900 mb-1 truncate">
+                                                {item.name}
+                                            </h3>
+                                            <p className="text-gray-600 mb-2">Size: {item.size}</p>
+                                            <p className="text-2xl font-bold text-pink-600">
+                                                ${item.price.toFixed(2)}
+                                            </p>
+                                        </div>
+
+                                        {/* Quantity Controls */}
+                                        <div className="flex flex-col items-end space-y-4">
+                                            <button
+                                                onClick={() => removeFromCart(item.id, item.size)}
+                                                className="text-red-500 hover:text-red-700 transition-colors p-2"
+                                                title="Remove item"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+
+                                            <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+                                                <button
+                                                    onClick={() => updateQuantity(item.id, item.size, item.quantity - 1)}
+                                                    disabled={item.quantity <= 1}
+                                                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <Minus className="w-4 h-4" />
+                                                </button>
+                                                <span className="w-12 text-center font-semibold">
+                                                    {item.quantity}
+                                                </span>
+                                                <button
+                                                    onClick={() => updateQuantity(item.id, item.size, item.quantity + 1)}
+                                                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </button>
+                                            </div>
+
+                                            <p className="text-lg font-bold text-gray-900">
+                                                ${(item.price * item.quantity).toFixed(2)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+
+                        {/* Continue Shopping Button */}
+                        <Link
+                            href="/shop"
+                            className="inline-flex items-center text-pink-600 hover:text-pink-700 font-semibold"
+                        >
+                            ← Continue Shopping
+                        </Link>
                     </div>
-                  </div>
+
+                    {/* Right Side - Order Summary */}
+                    <div className="lg:col-span-1">
+                        <div className="sticky top-8 space-y-6">
+                            {/* Promo Code Section */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-white rounded-2xl shadow-lg p-6"
+                            >
+                                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                                    <Gift className="w-5 h-5 mr-2 text-pink-500" />
+                                    Have a Promo Code?
+                                </h3>
+
+                                {!appliedPromo ? (
+                                    <div className="space-y-3">
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={promoCode}
+                                                onChange={(e) => {
+                                                    setPromoCode(e.target.value.toUpperCase())
+                                                    setPromoError('')
+                                                }}
+                                                onKeyPress={handlePromoKeyPress}
+                                                placeholder="Enter promo code"
+                                                disabled={isApplyingPromo}
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all uppercase"
+                                            />
+                                            <Tag className="absolute right-3 top-3.5 w-5 h-5 text-gray-400" />
+                                        </div>
+                                        
+                                        {promoError && (
+                                            <div className="flex items-start space-x-2 text-red-600 text-sm">
+                                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                                <span>{promoError}</span>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={handleApplyPromoCode}
+                                            disabled={isApplyingPromo || !promoCode.trim()}
+                                            className="w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:from-pink-600 hover:to-pink-700 transition-all shadow-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isApplyingPromo ? 'Applying...' : 'Apply Code'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div className="flex items-center space-x-2">
+                                                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <Check className="w-5 h-5 text-white" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-green-800">Code Applied!</p>
+                                                    <p className="text-sm text-green-700 font-semibold uppercase tracking-wide">
+                                                        {appliedPromo.code}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={handleRemovePromo}
+                                                className="text-green-700 hover:text-green-900 transition-colors"
+                                                title="Remove promo code"
+                                            >
+                                                <X className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                        {appliedPromo.description && (
+                                            <p className="text-xs text-green-600 mb-2">
+                                                {appliedPromo.description}
+                                            </p>
+                                        )}
+                                        <div className="flex items-center justify-between pt-2 border-t border-green-200">
+                                            <span className="text-green-700 font-medium">You saved:</span>
+                                            <span className="text-xl font-bold text-green-700">
+                                                ${discount.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </motion.div>
+
+                            {/* Order Summary */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                                className="bg-white rounded-2xl shadow-lg p-6"
+                            >
+                                <h3 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h3>
+
+                                <div className="space-y-4">
+                                    <div className="flex justify-between text-gray-700">
+                                        <span>Subtotal ({getTotalItems()} items)</span>
+                                        <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                                    </div>
+
+                                    {discount > 0 && (
+                                        <div className="flex justify-between text-green-600 font-semibold bg-green-50 px-3 py-2 rounded-lg -mx-1">
+                                            <span className="flex items-center">
+                                                <Percent className="w-4 h-4 mr-2" />
+                                                Discount ({appliedPromo.code})
+                                            </span>
+                                            <span>-${discount.toFixed(2)}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-between text-gray-700">
+                                        <span className="flex items-center">
+                                            <Truck className="w-4 h-4 mr-2" />
+                                            Shipping
+                                        </span>
+                                        <span className="font-semibold">
+                                            {shipping === 0 ? (
+                                                <span className="text-green-600 font-bold">FREE</span>
+                                            ) : (
+                                                `$${shipping.toFixed(2)}`
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    {shipping === 0 && (
+                                        <p className="text-xs text-green-600 flex items-center">
+                                            <Check className="w-3 h-3 mr-1" />
+                                            Free shipping unlocked!
+                                        </p>
+                                    )}
+
+                                    {shipping > 0 && subtotal < 75 && (
+                                        <p className="text-xs text-gray-600">
+                                            Add ${(75 - subtotal).toFixed(2)} more for free shipping
+                                        </p>
+                                    )}
+
+                                    <div className="flex justify-between text-gray-700">
+                                        <span>Tax (8%)</span>
+                                        <span className="font-semibold">${tax.toFixed(2)}</span>
+                                    </div>
+
+                                    <div className="pt-4 border-t-2 border-gray-200">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xl font-bold text-gray-900">Total</span>
+                                            <span className="text-2xl font-bold text-pink-600">
+                                                ${total.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {discount > 0 && (
+                                        <div className="bg-pink-50 border border-pink-200 rounded-lg p-3">
+                                            <p className="text-center text-pink-700 font-semibold text-sm flex items-center justify-center">
+                                                <Gift className="w-4 h-4 mr-2" />
+                                                You're saving ${discount.toFixed(2)} with this code!
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Checkout Button */}
+                                <button
+                                    onClick={handleProceedToCheckout}
+                                    className="w-full mt-6 px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl hover:from-pink-600 hover:to-pink-700 transition-all shadow-lg font-bold text-lg flex items-center justify-center"
+                                >
+                                    Proceed to Checkout
+                                    <ArrowRight className="ml-2 w-5 h-5" />
+                                </button>
+
+                                {/* Trust Badges */}
+                                <div className="mt-6 space-y-2 text-sm text-gray-600">
+                                    <div className="flex items-center space-x-2">
+                                        <Shield className="w-4 h-4 text-green-500" />
+                                        <span>Secure checkout</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Truck className="w-4 h-4 text-blue-500" />
+                                        <span>Free shipping over $75</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Heart className="w-4 h-4 text-pink-500" />
+                                        <span>30-day return policy</span>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    </div>
                 </div>
-              </motion.div>
             </div>
-          </div>
+
+            <Footer />
         </div>
-      </div>
-      <Footer />
-    </div>
-  )
+    )
 }
