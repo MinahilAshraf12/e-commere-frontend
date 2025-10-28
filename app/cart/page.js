@@ -40,7 +40,7 @@ export default function CartPage() {
             if (storedPromo) {
                 const promoData = JSON.parse(storedPromo)
                 setAppliedPromo(promoData)
-                console.log('✅ Loaded promo from localStorage:', promoData)
+              
             }
         } catch (error) {
             console.error('Error loading promo from localStorage:', error)
@@ -108,8 +108,7 @@ export default function CartPage() {
                 
                 toast.success(`🎉 Promo code "${data.promoCode.code}" applied! You saved $${data.savings.toFixed(2)}`)
                 
-                console.log('✅ Promo code applied successfully:', promoData)
-                console.log('💾 Stored in localStorage:', localStorage.getItem('appliedPromoCode'))
+            
             } else {
                 setPromoError(data.message || 'Invalid promo code')
                 toast.error(data.message || 'Invalid promo code')
@@ -158,7 +157,7 @@ export default function CartPage() {
                 localStorage.setItem('appliedPromoCode', JSON.stringify(updatedPromoData))
                 setAppliedPromo(updatedPromoData)
                 
-                console.log('✅ Promo re-validated:', updatedPromoData)
+                
             } else {
                 // Promo no longer valid
                 handleRemovePromo()
@@ -176,7 +175,7 @@ export default function CartPage() {
         setPromoCode('')
         setPromoError('')
         toast.info('Promo code removed')
-        console.log('🗑️ Promo code removed from localStorage')
+        
     }
 
     // ✅ Handle key press in promo input
@@ -194,14 +193,7 @@ export default function CartPage() {
     const tax = taxableAmount * 0.08 // 8% tax
     const total = subtotal + shipping + tax - discount
 
-    console.log('💵 Cart Calculation:', {
-        subtotal,
-        discount,
-        shipping,
-        tax,
-        total,
-        appliedPromo
-    })
+
 
     // ✅ Navigate to checkout with promo data
     const handleProceedToCheckout = () => {
@@ -217,12 +209,10 @@ export default function CartPage() {
             // Pass via URL as backup
             const encodedPromo = encodeURIComponent(JSON.stringify(appliedPromo))
             
-            console.log('🚀 Navigating to checkout with promo:', appliedPromo)
-            console.log('💾 localStorage check:', localStorage.getItem('appliedPromoCode'))
-            
+        
             router.push(`/checkout?promo=${encodedPromo}`)
         } else {
-            console.log('🚀 Navigating to checkout without promo')
+           
             router.push('/checkout')
         }
     }

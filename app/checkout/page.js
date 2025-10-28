@@ -43,7 +43,7 @@ function CheckoutContent() {
     useEffect(() => {
         const newOrderId = `ORDER_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`
         setOrderId(newOrderId)
-        console.log('🆔 Generated Order ID:', newOrderId)
+      
 
         // FIXED: Check multiple sources for promo code data
         let promoData = null;
@@ -53,7 +53,7 @@ function CheckoutContent() {
         if (urlPromo) {
             try {
                 promoData = JSON.parse(decodeURIComponent(urlPromo))
-                console.log('✅ Promo code from URL:', promoData)
+                
             } catch (error) {
                 console.error('Error parsing promo data from URL:', error)
             }
@@ -65,7 +65,7 @@ function CheckoutContent() {
                 const storedPromo = localStorage.getItem('appliedPromoCode')
                 if (storedPromo) {
                     promoData = JSON.parse(storedPromo)
-                    console.log('✅ Promo code from localStorage:', promoData)
+                   
                 }
             } catch (error) {
                 console.error('Error reading promo from localStorage:', error)
@@ -87,7 +87,7 @@ function CheckoutContent() {
         setIsProcessing(true)
         
         try {
-            console.log('✅ Payment successful!', { order, paymentData })
+            
             
             // If promo code was applied, track its usage
             if (appliedPromo && appliedPromo.code) {
@@ -122,7 +122,7 @@ function CheckoutContent() {
                 paymentId = paymentData.captureId
             }
             
-            console.log('🔄 Redirecting to success page...', { successOrderId, paymentId })
+          
             
             if (!successOrderId) {
                 throw new Error('Order ID is missing. Please contact support.')
@@ -166,7 +166,7 @@ function CheckoutContent() {
     if (appliedPromo && appliedPromo.discount) {
         // Use the discount amount from the promo validation
         discount = appliedPromo.discount.amount || 0
-        console.log('💰 Applied discount:', discount)
+        
     }
     
     // Calculate tax on (subtotal - discount)
@@ -176,14 +176,7 @@ function CheckoutContent() {
     // Calculate final total
     const total = subtotal + shipping + tax - discount
     
-    console.log('💵 Checkout Calculation:', {
-        subtotal,
-        discount,
-        shipping,
-        tax,
-        total,
-        appliedPromo
-    })
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
