@@ -279,7 +279,7 @@ const PromoCodeManager = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg"
+            className="bg-gradient-to-br from-blue-500 to-blue-400 rounded-xl p-6 text-white shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -294,7 +294,7 @@ const PromoCodeManager = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg"
+            className="bg-gradient-to-br from-green-500 to-green-400 rounded-xl p-6 text-white shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -309,7 +309,7 @@ const PromoCodeManager = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg"
+            className="bg-gradient-to-br from-purple-500 to-purple-400 rounded-xl p-6 text-white shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -324,7 +324,7 @@ const PromoCodeManager = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-6 text-white shadow-lg"
+            className="bg-gradient-to-br from-red-500 to-red-400 rounded-xl p-6 text-white shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>

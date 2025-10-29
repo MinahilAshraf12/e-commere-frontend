@@ -1,11 +1,13 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useState, useEffect } from 'react'
 import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
-  AlertCircle, Check, Loader, FileSpreadsheet, Download, FileUp } from 'lucide-react';
+  AlertCircle, Check, Loader, FileSpreadsheet, Download, FileUp, RefreshCw } from 'lucide-react';
 
 
- // Add Product Page Component
+ // Add Product Page Component with Dynamic Categories
   const AddProductPage = () => { 
-    const categories = ['Dresses', 'Tops', 'Bottoms', 'Accessories', 'Shoes', 'Outerwear', 'Activewear', 'Swimwear'];
+    // Dynamic categories from backend
+    const [categories, setCategories] = useState([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
   
   // Enhanced Add Product States
   const [uploadProgress, setUploadProgress] = useState({});
@@ -22,7 +24,7 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
   const [newProduct, setNewProduct] = useState({
     // Basic Information
     name: '',
-    category: 'Dresses',
+    category: '', // Will be set to first active category
     new_price: '',
     old_price: '',
     brand: '',
@@ -70,7 +72,70 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
     status: 'draft' // draft, published, archived
   });
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+  // Fetch active categories from backend
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const response = await fetch(`${API_BASE}/categories?active=true`);
+        const data = await response.json();
+        
+        if (data.success && data.categories && data.categories.length > 0) {
+          // Sort categories by order and name
+          const sortedCategories = data.categories.sort((a, b) => {
+            if (a.order !== b.order) return a.order - b.order;
+            return a.name.localeCompare(b.name);
+          });
+          
+          setCategories(sortedCategories);
+          
+          // Set first category as default if product category is empty
+          if (!newProduct.category && sortedCategories.length > 0) {
+            setNewProduct(prev => ({
+              ...prev,
+              category: sortedCategories[0].name
+            }));
+          }
+        } else {
+          // If no categories found, show alert
+          console.warn('No active categories found');
+          setCategories([]);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        alert('Failed to load categories. Please refresh the page.');
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, [API_BASE]);
+
+  // Refresh categories function
+  const refreshCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const response = await fetch(`${API_BASE}/categories?active=true`);
+      const data = await response.json();
+      
+      if (data.success && data.categories) {
+        const sortedCategories = data.categories.sort((a, b) => {
+          if (a.order !== b.order) return a.order - b.order;
+          return a.name.localeCompare(b.name);
+        });
+        setCategories(sortedCategories);
+        alert('Categories refreshed successfully!');
+      }
+    } catch (error) {
+      console.error('Error refreshing categories:', error);
+      alert('Failed to refresh categories');
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
 
   // Bulk Upload Handler
   const handleBulkFileSelect = useCallback((e) => {
@@ -86,9 +151,12 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
 
   // Download Template
   const downloadTemplate = useCallback(() => {
+    const categoryNames = categories.map(cat => cat.name).join(', ');
     const template = `name,category,new_price,old_price,brand,sku,description,short_description,stock_quantity,available,featured
-"Example Dress","Dresses","99.99","149.99","Brand Name","SKU-001","Full description","Short description","100","true","false"
-"Another Product","Tops","49.99","79.99","Brand","SKU-002","Description here","Short desc","50","true","true"`;
+"Example Dress","${categories[0]?.name || 'Dresses'}","99.99","149.99","Brand Name","SKU-001","Full description","Short description","100","true","false"
+"Another Product","${categories[1]?.name || 'Tops'}","49.99","79.99","Brand","SKU-002","Description here","Short desc","50","true","true"
+
+Available Categories: ${categoryNames}`;
     
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -99,7 +167,7 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-  }, []);
+  }, [categories]);
 
   // Bulk Upload Submit
   const handleBulkUpload = useCallback(async () => {
@@ -199,40 +267,27 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
 
   // Helper function to update newProduct
   const updateProductField = useCallback((field, value) => {
-    setNewProduct(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  }, []);
-
-  // Helper function to update nested fields
-  const updateNestedField = useCallback((parentField, childField, value) => {
-    setNewProduct(prev => ({
-      ...prev,
-      [parentField]: {
-        ...prev[parentField],
-        [childField]: value
+    setNewProduct(prev => {
+      const updated = { ...prev, [field]: value };
+      
+      // Auto-generate slug when name changes
+      if (field === 'name' && !prev.slug) {
+        updated.slug = generateSlug(value);
       }
-    }));
-  }, []);
+      
+      // Auto-generate meta title when name or category changes
+      if ((field === 'name' || field === 'category') && !prev.meta_title) {
+        updated.meta_title = generateMetaTitle(
+          field === 'name' ? value : prev.name,
+          field === 'category' ? value : prev.category
+        );
+      }
+      
+      return updated;
+    });
+  }, [generateSlug, generateMetaTitle]);
 
-  // Helper function to add array items
-  const addArrayItem = useCallback((field, defaultValue = '') => {
-    setNewProduct(prev => ({
-      ...prev,
-      [field]: [...prev[field], defaultValue]
-    }));
-  }, []);
-
-  // Helper function to remove array items
-  const removeArrayItem = useCallback((field, index) => {
-    setNewProduct(prev => ({
-      ...prev,
-      [field]: prev[field].filter((_, i) => i !== index)
-    }));
-  }, []);
-
-  // Helper function to update array items
+  // Update array items
   const updateArrayItem = useCallback((field, index, value) => {
     setNewProduct(prev => ({
       ...prev,
@@ -240,36 +295,99 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
     }));
   }, []);
 
-  // Enhanced Add Product Handler
-  const handleAddProduct = useCallback(async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      // Auto-generate fields if empty
-      const productData = {
-        ...newProduct,
-        slug: newProduct.slug || generateSlug(newProduct.name),
-        meta_title: newProduct.meta_title || generateMetaTitle(newProduct.name, newProduct.category),
-        image: newProduct.images.length > 0 ? newProduct.images[0] : newProduct.image
-      };
+  const addArrayItem = useCallback((field) => {
+    setNewProduct(prev => ({
+      ...prev,
+      [field]: [...prev[field], '']
+    }));
+  }, []);
 
+  const removeArrayItem = useCallback((field, index) => {
+    setNewProduct(prev => ({
+      ...prev,
+      [field]: prev[field].filter((_, i) => i !== index)
+    }));
+  }, []);
+
+  // Update specifications
+  const updateSpecification = useCallback((index, key, value) => {
+    setNewProduct(prev => ({
+      ...prev,
+      specifications: prev.specifications.map((spec, i) => 
+        i === index ? { ...spec, [key]: value } : spec
+      )
+    }));
+  }, []);
+
+  const addSpecification = useCallback(() => {
+    setNewProduct(prev => ({
+      ...prev,
+      specifications: [...prev.specifications, { key: '', value: '' }]
+    }));
+  }, []);
+
+  const removeSpecification = useCallback((index) => {
+    setNewProduct(prev => ({
+      ...prev,
+      specifications: prev.specifications.filter((_, i) => i !== index)
+    }));
+  }, []);
+
+  // Handle form submission
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!newProduct.name || !newProduct.new_price) {
+      alert('Please fill in all required fields (Name and Price)');
+      return;
+    }
+
+    if (!newProduct.category) {
+      alert('Please select a category');
+      return;
+    }
+    
+    setSaving(true);
+    
+    try {
+      // Clean up empty array items
+      const cleanedProduct = {
+        ...newProduct,
+        features: newProduct.features.filter(f => f.trim()),
+        colors: newProduct.colors.filter(c => c.trim()),
+        sizes: newProduct.sizes.filter(s => s.trim()),
+        tags: newProduct.tags.filter(t => t.trim()),
+        specifications: newProduct.specifications.filter(s => s.key && s.value),
+        
+        // Ensure image is set (use first image from images array if available)
+        image: newProduct.image || (newProduct.images && newProduct.images[0]) || '',
+        
+        // Parse numeric values
+        new_price: parseFloat(newProduct.new_price),
+        old_price: newProduct.old_price ? parseFloat(newProduct.old_price) : parseFloat(newProduct.new_price),
+        stock_quantity: newProduct.stock_quantity ? parseInt(newProduct.stock_quantity) : 0,
+        low_stock_threshold: newProduct.low_stock_threshold ? parseInt(newProduct.low_stock_threshold) : 5,
+        discount_value: newProduct.discount_value ? parseFloat(newProduct.discount_value) : 0,
+        weight: newProduct.weight ? parseFloat(newProduct.weight) : 0
+      };
+      
       const response = await fetch(`${API_BASE}/addproduct`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(productData)
+        body: JSON.stringify(cleanedProduct)
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
       const data = await response.json();
+      
       if (data.success) {
+        alert('Product added successfully!');
+        // Reset form
         setNewProduct({
           name: '',
-          category: 'Dresses',
+          category: categories.length > 0 ? categories[0].name : '',
           new_price: '',
           old_price: '',
           brand: '',
@@ -305,7 +423,8 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
           status: 'draft'
         });
         setUploadProgress({});
-        alert('Product added successfully!');
+      } else {
+        alert(data.message || 'Failed to add product');
       }
     } catch (error) {
       console.error('Error adding product:', error);
@@ -313,175 +432,181 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
     } finally {
       setSaving(false);
     }
-  }, [newProduct, generateSlug, generateMetaTitle, API_BASE]);
+  }, [newProduct, API_BASE, categories]);
+
+  // Handle image selection
+  const handleImageSelect = useCallback(async (e) => {
+    const files = Array.from(e.target.files);
+    
+    if (files.length === 0) return;
+    
+    const uploadedUrls = await handleImageUpload(files);
+    
+    setNewProduct(prev => ({
+      ...prev,
+      images: [...prev.images, ...uploadedUrls],
+      image: prev.image || uploadedUrls[0] // Set first image as main if not set
+    }));
+  }, [handleImageUpload]);
+
+  // Remove image from array
+  const removeImage = useCallback((indexToRemove) => {
+    setNewProduct(prev => {
+      const newImages = prev.images.filter((_, index) => index !== indexToRemove);
+      return {
+        ...prev,
+        images: newImages,
+        image: prev.image === prev.images[indexToRemove] ? (newImages[0] || '') : prev.image
+      };
+    });
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-pink-50/20 to-rose-50/30 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header with Mode Toggle */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 mb-6 border border-pink-100">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        
+        {/* Header with Bulk Upload Toggle */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6 border border-pink-100">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 bg-clip-text text-transparent mb-2">
-                Add Products
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent flex items-center">
+                <Package className="w-8 h-8 mr-3 text-pink-600" />
+                {bulkUploadMode ? 'Bulk Product Upload' : 'Add New Product'}
               </h1>
-              <p className="text-gray-600">Create new products or upload in bulk</p>
+              <p className="text-gray-600 mt-1">
+                {bulkUploadMode ? 'Upload multiple products at once' : 'Create a new product listing'}
+              </p>
             </div>
             
-            {/* Mode Toggle Buttons */}
-            <div className="flex gap-2">
+            <div className="flex items-center space-x-3">
               <button
-                onClick={() => {
-                  setBulkUploadMode(false);
-                  setBulkUploadResults(null);
-                }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all shadow-md ${
-                  !bulkUploadMode
-                    ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white'
-                    : 'bg-white text-gray-700 hover:bg-pink-50 border border-pink-200'
-                }`}
-              >
-                <Package className="w-4 h-4" />
-                Single Product
-              </button>
-              <button
-                onClick={() => {
-                  setBulkUploadMode(true);
-                  setBulkUploadResults(null);
-                }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all shadow-md ${
+                onClick={() => setBulkUploadMode(!bulkUploadMode)}
+                className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all shadow-lg ${
                   bulkUploadMode
-                    ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white'
-                    : 'bg-white text-gray-700 hover:bg-pink-50 border border-pink-200'
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
+                    : 'bg-white border-2 border-pink-300 text-gray-700 hover:bg-pink-50'
                 }`}
               >
-                <FileSpreadsheet className="w-4 h-4" />
-                Bulk Upload
+                <FileUp className="w-5 h-5" />
+                <span>{bulkUploadMode ? 'Single Upload' : 'Bulk Upload'}</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Bulk Upload Mode */}
+        {/* Bulk Upload Interface */}
         {bulkUploadMode ? (
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-pink-100">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-8 border border-pink-100">
             <div className="max-w-3xl mx-auto">
               <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-pink-400 to-rose-500 rounded-full mb-4">
-                  <FileUp className="w-8 h-8 text-white" />
-                </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-2">
-                  Bulk Product Upload
-                </h2>
-                <p className="text-gray-600">Upload multiple products at once using CSV or Excel file</p>
+                <FileSpreadsheet className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Bulk Product Upload</h2>
+                <p className="text-gray-600">Upload multiple products at once using CSV or Excel files</p>
               </div>
 
-              {/* Download Template Button */}
-              <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-6 mb-6 border border-pink-200">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    <Download className="w-6 h-6 text-pink-600" />
-                  </div>
+              {/* Template Download */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
+                <div className="flex items-start space-x-3">
+                  <AlertCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800 mb-2">First time uploading?</h3>
-                    <p className="text-sm text-gray-600 mb-3">
-                      Download our CSV template to ensure your file has the correct format
+                    <h3 className="font-semibold text-blue-900 mb-2">Download Template First</h3>
+                    <p className="text-blue-800 text-sm mb-3">
+                      Download our template file to see the correct format and available categories
                     </p>
                     <button
                       onClick={downloadTemplate}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all shadow-md"
+                      disabled={categories.length === 0}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       <Download className="w-4 h-4" />
-                      Download Template
+                      <span>Download CSV Template</span>
                     </button>
+                    {categories.length === 0 && (
+                      <p className="text-red-600 text-sm mt-2">Please add categories first before uploading products</p>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* File Upload Area */}
-              <div className="border-2 border-dashed border-pink-300 rounded-xl p-8 text-center mb-6 bg-white">
+              <div className="border-2 border-dashed border-pink-300 rounded-xl p-8 text-center mb-6 hover:border-pink-500 transition-all">
                 <input
                   type="file"
                   accept=".csv,.xlsx,.xls"
                   onChange={handleBulkFileSelect}
                   className="hidden"
-                  id="bulk-upload"
+                  id="bulk-file-input"
+                  disabled={categories.length === 0}
                 />
-                <label htmlFor="bulk-upload" className="cursor-pointer block">
-                  <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center mb-4">
-                      <Upload className="w-8 h-8 text-pink-600" />
-                    </div>
-                    <p className="text-lg font-medium text-gray-700 mb-2">
-                      {bulkFile ? bulkFile.name : 'Click to upload or drag and drop'}
-                    </p>
-                    <p className="text-sm text-gray-500">CSV or Excel files only</p>
-                  </div>
+                <label
+                  htmlFor="bulk-file-input"
+                  className={`cursor-pointer ${categories.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <Upload className="w-12 h-12 text-pink-500 mx-auto mb-3" />
+                  <p className="text-lg font-medium text-gray-900 mb-1">
+                    {bulkFile ? bulkFile.name : 'Click to upload CSV or Excel file'}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Supports .csv, .xlsx, and .xls files (max 10MB)
+                  </p>
                 </label>
               </div>
 
               {/* Upload Button */}
-              {bulkFile && (
-                <div className="flex justify-center mb-6">
-                  <button
-                    onClick={handleBulkUpload}
-                    disabled={bulkUploading}
-                    className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
-                  >
-                    {bulkUploading ? (
-                      <>
-                        <Loader className="w-5 h-5 animate-spin" />
-                        <span>Uploading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-5 h-5" />
-                        <span>Upload Products</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
+              <button
+                onClick={handleBulkUpload}
+                disabled={!bulkFile || bulkUploading || categories.length === 0}
+                className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl hover:from-pink-600 hover:to-rose-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg text-lg font-medium"
+              >
+                {bulkUploading ? (
+                  <>
+                    <Loader className="w-6 h-6 animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileUp className="w-6 h-6" />
+                    <span>Upload Products</span>
+                  </>
+                )}
+              </button>
 
               {/* Upload Results */}
               {bulkUploadResults && (
-                <div className={`rounded-xl p-6 ${
+                <div className={`mt-6 rounded-xl p-6 border-2 ${
                   bulkUploadResults.success
-                    ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200'
-                    : 'bg-gradient-to-r from-red-50 to-rose-50 border border-red-200'
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-red-50 border-red-200'
                 }`}>
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0">
-                      {bulkUploadResults.success ? (
-                        <Check className="w-6 h-6 text-green-600" />
-                      ) : (
-                        <AlertCircle className="w-6 h-6 text-red-600" />
-                      )}
-                    </div>
+                  <div className="flex items-start space-x-3">
+                    {bulkUploadResults.success ? (
+                      <Check className="w-6 h-6 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
+                    )}
                     <div className="flex-1">
                       <h3 className={`font-semibold mb-2 ${
-                        bulkUploadResults.success ? 'text-green-800' : 'text-red-800'
+                        bulkUploadResults.success ? 'text-green-900' : 'text-red-900'
                       }`}>
                         {bulkUploadResults.message}
                       </h3>
+                      
                       {bulkUploadResults.success && (
-                        <div className="text-sm text-green-700">
-                          <p>✓ Successfully added: {bulkUploadResults.added} products</p>
+                        <div className="space-y-1 text-sm text-green-800">
+                          <p>✅ Successfully added: {bulkUploadResults.added} products</p>
                           {bulkUploadResults.failed > 0 && (
-                            <p>✗ Failed: {bulkUploadResults.failed} products</p>
+                            <p>❌ Failed: {bulkUploadResults.failed} products</p>
                           )}
                         </div>
                       )}
+                      
                       {bulkUploadResults.errors && bulkUploadResults.errors.length > 0 && (
                         <div className="mt-3">
-                          <p className="text-sm font-medium text-gray-700 mb-2">Errors:</p>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {bulkUploadResults.errors.slice(0, 5).map((error, idx) => (
-                              <li key={idx}>• {error}</li>
+                          <p className="font-medium text-sm mb-2">Errors:</p>
+                          <ul className="text-sm space-y-1 max-h-40 overflow-y-auto">
+                            {bulkUploadResults.errors.map((error, index) => (
+                              <li key={index} className="text-red-700">• {error}</li>
                             ))}
-                            {bulkUploadResults.errors.length > 5 && (
-                              <li>... and {bulkUploadResults.errors.length - 5} more</li>
-                            )}
                           </ul>
                         </div>
                       )}
@@ -489,65 +614,121 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                   </div>
                 </div>
               )}
-
-              {/* Instructions */}
-              <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-                <h3 className="font-semibold text-gray-800 mb-3">📋 File Format Requirements:</h3>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li>• File must be in CSV or Excel format (.csv, .xlsx, .xls)</li>
-                  <li>• First row should contain column headers</li>
-                  <li>• Required columns: name, category, new_price</li>
-                  <li>• Optional columns: old_price, brand, sku, description, stock_quantity, etc.</li>
-                  <li>• Use "true" or "false" for boolean fields (available, featured)</li>
-                  <li>• Maximum file size: 10MB</li>
-                </ul>
-              </div>
             </div>
           </div>
         ) : (
-          /* Single Product Form - Keeping existing form with pink theme */
-          <form onSubmit={handleAddProduct} className="space-y-6">
+          
+          /* Single Product Form */
+          <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
               {/* Main Content - 2 columns */}
               <div className="lg:col-span-2 space-y-6">
+                
                 {/* Basic Information */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100">
-                  <h2 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-6 flex items-center">
-                    <Package className="w-6 h-6 mr-2 text-pink-600" />
+                  <h2 className="text-lg font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-4">
                     Basic Information
                   </h2>
                   
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Product Name *
+                        Product Name <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
-                        required
                         value={newProduct.name}
                         onChange={(e) => updateProductField('name', e.target.value)}
                         className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
                         placeholder="Enter product name"
+                        required
                       />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Category *
-                        </label>
+                    <div>
+                      <label className=" text-sm font-medium text-gray-700 mb-2 flex items-center justify-between">
+                        <span>
+                          Category <span className="text-red-500">*</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={refreshCategories}
+                          disabled={loadingCategories}
+                          className="text-xs flex items-center space-x-1 text-pink-600 hover:text-pink-800 disabled:opacity-50"
+                          title="Refresh categories"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${loadingCategories ? 'animate-spin' : ''}`} />
+                          <span>Refresh</span>
+                        </button>
+                      </label>
+                      
+                      {loadingCategories ? (
+                        <div className="w-full px-4 py-3 border border-pink-200 rounded-lg bg-gray-50 flex items-center justify-center">
+                          <Loader className="w-5 h-5 animate-spin text-pink-600 mr-2" />
+                          <span className="text-gray-600">Loading categories...</span>
+                        </div>
+                      ) : categories.length === 0 ? (
+                        <div className="w-full px-4 py-3 border border-red-200 rounded-lg bg-red-50">
+                          <p className="text-red-600 text-sm">
+                            No active categories found. Please add categories first from the Categories page.
+                          </p>
+                        </div>
+                      ) : (
                         <select
                           value={newProduct.category}
                           onChange={(e) => updateProductField('category', e.target.value)}
                           className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                          required
                         >
-                          {categories.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
+                          <option value="">Select a category</option>
+                          {categories.map((cat) => (
+                            <option key={cat._id} value={cat.name}>
+                              {cat.name}
+                            </option>
                           ))}
                         </select>
+                      )}
+                      
+                      {!loadingCategories && categories.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {categories.length} active {categories.length === 1 ? 'category' : 'categories'} available
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          New Price <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={newProduct.new_price}
+                          onChange={(e) => updateProductField('new_price', e.target.value)}
+                          className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                          placeholder="99.99"
+                          required
+                        />
                       </div>
                       
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Old Price
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={newProduct.old_price}
+                          onChange={(e) => updateProductField('old_price', e.target.value)}
+                          className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                          placeholder="149.99"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Brand
@@ -560,54 +741,21 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                           placeholder="Brand name"
                         />
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className=" text-sm font-medium text-gray-700 mb-2 flex items-center">
-                          <DollarSign className="w-4 h-4 mr-1 text-pink-600" />
-                          New Price *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          required
-                          value={newProduct.new_price}
-                          onChange={(e) => updateProductField('new_price', e.target.value)}
-                          className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                          placeholder="0.00"
-                        />
-                      </div>
                       
                       <div>
-                        <label className=" text-sm font-medium text-gray-700 mb-2 flex items-center">
-                          <DollarSign className="w-4 h-4 mr-1 text-gray-500" />
-                          Old Price
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          SKU
                         </label>
                         <input
-                          type="number"
-                          step="0.01"
-                          value={newProduct.old_price}
-                          onChange={(e) => updateProductField('old_price', e.target.value)}
+                          type="text"
+                          value={newProduct.sku}
+                          onChange={(e) => updateProductField('sku', e.target.value)}
                           className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                          placeholder="0.00"
+                          placeholder="SKU-001"
                         />
                       </div>
                     </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        SKU
-                      </label>
-                      <input
-                        type="text"
-                        value={newProduct.sku}
-                        onChange={(e) => updateProductField('sku', e.target.value)}
-                        className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                        placeholder="Product SKU"
-                      />
-                    </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Short Description
@@ -615,13 +763,12 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                       <textarea
                         value={newProduct.short_description}
                         onChange={(e) => updateProductField('short_description', e.target.value)}
-                        rows={2}
+                        rows="2"
                         className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                        placeholder="Brief product description (150 chars max)"
-                        maxLength={150}
+                        placeholder="Brief product description"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Full Description
@@ -629,7 +776,7 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                       <textarea
                         value={newProduct.description}
                         onChange={(e) => updateProductField('description', e.target.value)}
-                        rows={4}
+                        rows="5"
                         className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
                         placeholder="Detailed product description"
                       />
@@ -639,115 +786,67 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
 
                 {/* Product Images */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100">
-                  <h2 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-6 flex items-center">
-                    <ImageIcon className="w-6 h-6 mr-2 text-pink-600" />
+                  <h2 className="text-lg font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-4 flex items-center">
+                    <ImageIcon className="w-5 h-5 mr-2 text-pink-600" />
                     Product Images
                   </h2>
                   
-                  <div className="border-2 border-dashed border-pink-300 rounded-lg p-6 text-center bg-gradient-to-br from-pink-50/50 to-rose-50/50">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const files = e.target.files;
-                        if (files.length > 0) {
-                          const urls = await handleImageUpload(files);
-                          updateProductField('images', [...newProduct.images, ...urls]);
-                        }
-                      }}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label htmlFor="image-upload" className="cursor-pointer block">
-                      <Upload className="w-12 h-12 mx-auto mb-4 text-pink-600" />
-                      <p className="text-sm text-gray-600 mb-2">Click to upload or drag and drop</p>
-                      <p className="text-xs text-gray-500">PNG, JPG, WEBP up to 5MB each</p>
-                    </label>
-                  </div>
-                  
-                  {newProduct.images.length > 0 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mt-4">
-                      {newProduct.images.map((img, idx) => (
-                        <div key={idx} className="relative group">
-                          <img
-                            src={img}
-                            alt={`Product ${idx + 1}`}
-                            className="w-full h-24 object-cover rounded-lg border-2 border-pink-200"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              updateProductField('images', newProduct.images.filter((_, i) => i !== idx));
-                            }}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
+                  <div className="space-y-4">
+                    <div className="border-2 border-dashed border-pink-300 rounded-lg p-6 text-center hover:border-pink-500 transition-all">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <label htmlFor="image-upload" className="cursor-pointer">
+                        <Upload className="w-10 h-10 text-pink-500 mx-auto mb-2" />
+                        <p className="text-sm font-medium text-gray-700">Click to upload images</p>
+                        <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
+                      </label>
                     </div>
-                  )}
-                  
-                  {Object.keys(uploadProgress).length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      {Object.entries(uploadProgress).map(([name, progress]) => (
-                        <div key={name} className="flex items-center space-x-2">
-                          <div className="flex-1 bg-pink-100 rounded-full h-2">
-                            <div
-                              className="bg-gradient-to-r from-pink-500 to-rose-500 h-2 rounded-full transition-all"
-                              style={{ width: `${progress}%` }}
+
+                    {newProduct.images.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {newProduct.images.map((image, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={image}
+                              alt={`Product ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg border-2 border-pink-200"
                             />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            {index === 0 && (
+                              <span className="absolute bottom-2 left-2 bg-pink-500 text-white text-xs px-2 py-1 rounded">
+                                Main
+                              </span>
+                            )}
                           </div>
-                          <span className="text-xs text-gray-600">{name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Product Details */}
+                {/* Product Variants */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100">
-                  <h2 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-6 flex items-center">
-                    <Star className="w-6 h-6 mr-2 text-pink-600" />
-                    Product Details
+                  <h2 className="text-lg font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-4">
+                    Product Variants
                   </h2>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-6">
+                    {/* Colors */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Features
-                      </label>
-                      {newProduct.features.map((feature, index) => (
-                        <div key={index} className="flex items-center space-x-2 mb-2">
-                          <input
-                            type="text"
-                            value={feature}
-                            onChange={(e) => updateArrayItem('features', index, e.target.value)}
-                            className="flex-1 px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                            placeholder="Product feature"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeArrayItem('features', index)}
-                            className="text-red-500 hover:text-red-700 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => addArrayItem('features')}
-                        className="text-pink-600 hover:text-pink-800 text-sm font-medium"
-                      >
-                        + Add Feature
-                      </button>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Colors Available
+                        Available Colors
                       </label>
                       {newProduct.colors.map((color, index) => (
                         <div key={index} className="flex items-center space-x-2 mb-2">
@@ -775,10 +874,11 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                         + Add Color
                       </button>
                     </div>
-                    
+
+                    {/* Sizes */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Sizes Available
+                        Available Sizes
                       </label>
                       {newProduct.sizes.map((size, index) => (
                         <div key={index} className="flex items-center space-x-2 mb-2">
@@ -787,7 +887,7 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                             value={size}
                             onChange={(e) => updateArrayItem('sizes', index, e.target.value)}
                             className="flex-1 px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                            placeholder="Size (e.g., S, M, L, XL)"
+                            placeholder="Size"
                           />
                           <button
                             type="button"
@@ -806,7 +906,40 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                         + Add Size
                       </button>
                     </div>
-                    
+
+                    {/* Features */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Product Features
+                      </label>
+                      {newProduct.features.map((feature, index) => (
+                        <div key={index} className="flex items-center space-x-2 mb-2">
+                          <input
+                            type="text"
+                            value={feature}
+                            onChange={(e) => updateArrayItem('features', index, e.target.value)}
+                            className="flex-1 px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                            placeholder="Product feature"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeArrayItem('features', index)}
+                            className="text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addArrayItem('features')}
+                        className="text-pink-600 hover:text-pink-800 text-sm font-medium"
+                      >
+                        + Add Feature
+                      </button>
+                    </div>
+
+                    {/* Materials */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Materials
@@ -815,11 +948,12 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                         type="text"
                         value={newProduct.materials}
                         onChange={(e) => updateProductField('materials', e.target.value)}
-                        className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                        placeholder="e.g., 100% Cotton, Polyester blend"
+                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                        placeholder="e.g., 100% Cotton"
                       />
                     </div>
-                    
+
+                    {/* Care Instructions */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Care Instructions
@@ -827,22 +961,35 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                       <textarea
                         value={newProduct.care_instructions}
                         onChange={(e) => updateProductField('care_instructions', e.target.value)}
-                        rows={3}
-                        className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                        rows="2"
+                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
                         placeholder="Washing and care instructions"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* SEO & Metadata */}
+                {/* SEO Section */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-pink-100">
-                  <h2 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-6 flex items-center">
-                    <Globe className="w-6 h-6 mr-2 text-pink-600" />
-                    SEO & Metadata
+                  <h2 className="text-lg font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-4 flex items-center">
+                    <Globe className="w-5 h-5 mr-2 text-pink-600" />
+                    SEO & Meta Data
                   </h2>
                   
                   <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        URL Slug
+                      </label>
+                      <input
+                        type="text"
+                        value={newProduct.slug}
+                        onChange={(e) => updateProductField('slug', e.target.value)}
+                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                        placeholder="product-url-slug"
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Meta Title
@@ -851,11 +998,11 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                         type="text"
                         value={newProduct.meta_title}
                         onChange={(e) => updateProductField('meta_title', e.target.value)}
-                        className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                        placeholder="SEO title (auto-generated if empty)"
+                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                        placeholder="SEO title"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Meta Description
@@ -863,16 +1010,12 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                       <textarea
                         value={newProduct.meta_description}
                         onChange={(e) => updateProductField('meta_description', e.target.value)}
-                        rows={3}
-                        className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                        placeholder="Brief description for search engine results"
-                        maxLength={160}
+                        rows="2"
+                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                        placeholder="SEO description"
                       />
-                      <div className="text-right text-sm text-gray-500 mt-1">
-                        {newProduct.meta_description.length}/160
-                      </div>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Meta Keywords
@@ -881,15 +1024,15 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
                         type="text"
                         value={newProduct.meta_keywords}
                         onChange={(e) => updateProductField('meta_keywords', e.target.value)}
-                        className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
+                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
                         placeholder="keyword1, keyword2, keyword3"
                       />
-                      <p className="text-sm text-gray-500 mt-1">Separate keywords with commas</p>
                     </div>
-                    
+
+                    {/* Tags */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tags
+                        Product Tags
                       </label>
                       {newProduct.tags.map((tag, index) => (
                         <div key={index} className="flex items-center space-x-2 mb-2">
@@ -1066,7 +1209,7 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
               </button>
               <button
                 type="submit"
-                disabled={saving || !newProduct.name || !newProduct.new_price}
+                disabled={saving || !newProduct.name || !newProduct.new_price || !newProduct.category || categories.length === 0}
                 className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
               >
                 {saving ? (

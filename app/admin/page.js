@@ -52,6 +52,7 @@ import ProductDetailsPage from './components/ProductDetails';
 import AdminOrders from './components/AdminOrders';
 import AdminLogin from './components/AdminLogin';
 import Promocodemanager from './components/Promocodemanager';
+import CategoriesPage from './components/Categoriespage';
 
 const AdminPanel = () => {
   // ALL STATES FIRST - Before any conditional logic
@@ -63,6 +64,7 @@ const AdminPanel = () => {
   // Existing states
   const [selectedProductForEdit, setSelectedProductForEdit] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({});
   const [ecommerceOpen, setEcommerceOpen] = useState(false);
@@ -664,35 +666,51 @@ const AdminPanel = () => {
         </button>
       </div>
 
-      {/* Enhanced Sidebar with E-commerce Module - Pink Dreams Theme */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-br from-white via-pink-50/30 to-rose-50/40 shadow-2xl border-r border-pink-100 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Enhanced Collapsible Sidebar - Pink Dreams Theme */}
+      <div className={`fixed inset-y-0 left-0 z-40 bg-gradient-to-br from-white via-pink-50/30 to-rose-50/40 shadow-2xl border-r border-pink-100 transform transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'w-20' : 'w-64'} lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        
+        {/* Header Section */}
         <div className="p-6 border-b border-pink-100 bg-white/80 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-    <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group flex-shrink-0">          
-              <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-xl">P</span>
+            <div className={`flex items-center gap-3 transition-all duration-300 ${sidebarCollapsed ? 'justify-center w-full' : ''}`}>
+              <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group flex-shrink-0">          
+                <div className="relative">
+                  <div className="w-12 h-12 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-xl">P</span>
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-300 to-yellow-400 rounded-full animate-pulse"></div>
                 </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-300 to-yellow-400 rounded-full animate-pulse"></div>
-              </div>
-             
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 bg-clip-text text-transparent">
-                  Pink Dreams
-                </h1>
-                <p className="text-xs text-gray-500">Admin Panel</p>
-              </div>
-               </Link> 
+               
+                {!sidebarCollapsed && (
+                  <div>
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 bg-clip-text text-transparent">
+                      Pink Dreams
+                    </h1>
+                    <p className="text-xs text-gray-500">Admin Panel</p>
+                  </div>
+                )}
+              </Link> 
             </div>
+            
+            {/* Mobile Close Button */}
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-gray-500 hover:text-pink-600 transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
+
+            {/* Desktop Collapse Toggle */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden lg:block text-gray-500 hover:text-pink-600 transition-colors"
+            >
+              {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            </button>
           </div>
-          {adminData && (
+          
+          {/* Admin Info */}
+          {adminData && !sidebarCollapsed && (
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-pink-100">
               <Shield className="w-5 h-5 text-pink-500" />
               <div className="flex-1">
@@ -701,156 +719,192 @@ const AdminPanel = () => {
               </div>
             </div>
           )}
+          {adminData && sidebarCollapsed && (
+            <div className="flex justify-center mt-3 pt-3 border-t border-pink-100">
+              <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-rose-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                {adminData.name?.charAt(0).toUpperCase()}
+              </div>
+            </div>
+          )}
         </div>
         
-        <nav className="mt-6">
+        {/* Navigation */}
+        <nav className="mt-6 flex-1 overflow-y-auto">
           <div className="px-4 space-y-2">
+            
+            {/* Dashboard */}
             <button
               onClick={() => {
                 setActiveTab('dashboard');
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                 activeTab === 'dashboard' 
                   ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
                   : 'text-gray-600 hover:bg-pink-50/50'
-              }`}
+              } ${sidebarCollapsed ? 'justify-center' : ''}`}
+              title={sidebarCollapsed ? 'Dashboard' : ''}
             >
-              <Home className="w-5 h-5" />
-              Dashboard
+              <Home className="w-5 h-5 flex-shrink-0" />
+              {!sidebarCollapsed && <span>Dashboard</span>}
             </button>
 
             {/* E-commerce Module with Dropdown */}
             <div className="space-y-1">
               <button
                 onClick={() => setEcommerceOpen(!ecommerceOpen)}
-                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all ${
                   ['add-product', 'products', 'product-details', 'edit-product'].includes(activeTab)
                     ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md'
                     : 'text-gray-600 hover:bg-pink-50/50'
-                }`}
+                } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                title={sidebarCollapsed ? 'E-commerce' : ''}
               >
                 <div className="flex items-center gap-3">
-                  <Store className="w-5 h-5" />
-                  E-commerce
+                  <Store className="w-5 h-5 flex-shrink-0" />
+                  {!sidebarCollapsed && <span>E-commerce</span>}
                 </div>
-                {ecommerceOpen ? (
-                  <ChevronUp className="w-4 h-4" />
+                {!sidebarCollapsed && (ecommerceOpen ? (
+                  <ChevronUp className="w-4 h-4 flex-shrink-0" />
                 ) : (
-                  <ChevronDown className="w-4 h-4" />
-                )}
+                  <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                ))}
               </button>
 
               {/* E-commerce Dropdown */}
-              <div className={`ml-4 space-y-1 transition-all duration-200 ${ecommerceOpen ? 'block' : 'hidden'}`}>
-                <button
-                  onClick={() => {
-                    setActiveTab('add-product');
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                    activeTab === 'add-product' 
-                      ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
-                      : 'text-gray-600 hover:bg-pink-50/50'
-                  }`}
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Product
-                </button>
-                
-                <button
-                  onClick={() => {
-                    setActiveTab('products');
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                    activeTab === 'products' 
-                      ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
-                      : 'text-gray-600 hover:bg-pink-50/50'
-                  }`}
-                >
-                  <Package className="w-4 h-4" />
-                  View Products
-                </button>
-                
-                <button
-                  onClick={() => {
-                    setActiveTab('product-details');
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                    activeTab === 'product-details' 
-                      ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
-                      : 'text-gray-600 hover:bg-pink-50/50'
-                  }`}
-                >
-                  <Eye className="w-4 h-4" />
-                  Product Details
-                </button>
-                
-                <button
-                  onClick={() => {
-                    setActiveTab('edit-product');
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                    activeTab === 'edit-product' 
-                      ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
-                      : 'text-gray-600 hover:bg-pink-50/50'
-                  }`}
-                >
-                  <Edit className="w-4 h-4" />
-                  Edit Product
-                </button>
-              </div>
+              {!sidebarCollapsed && (
+                <div className={`ml-4 space-y-1 transition-all duration-200 ${ecommerceOpen ? 'block' : 'hidden'}`}>
+                  <button
+                    onClick={() => {
+                      setActiveTab('add-product');
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
+                      activeTab === 'add-product' 
+                        ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
+                        : 'text-gray-600 hover:bg-pink-50/50'
+                    }`}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Product
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setActiveTab('products');
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
+                      activeTab === 'products' 
+                        ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
+                        : 'text-gray-600 hover:bg-pink-50/50'
+                    }`}
+                  >
+                    <Package className="w-4 h-4" />
+                    View Products
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setActiveTab('product-details');
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
+                      activeTab === 'product-details' 
+                        ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
+                        : 'text-gray-600 hover:bg-pink-50/50'
+                    }`}
+                  >
+                    <Eye className="w-4 h-4" />
+                    Product Details
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setActiveTab('edit-product');
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
+                      activeTab === 'edit-product' 
+                        ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
+                        : 'text-gray-600 hover:bg-pink-50/50'
+                    }`}
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit Product
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Orders Section */}
+            {/* Orders */}
             <button
               onClick={() => {
                 setActiveTab('orders');
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                 activeTab === 'orders' 
                   ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
                   : 'text-gray-600 hover:bg-pink-50/50'
-              }`}
+              } ${sidebarCollapsed ? 'justify-center' : ''}`}
+              title={sidebarCollapsed ? 'Orders' : ''}
             >
-              <ShoppingBag className="w-5 h-5" />
-              Orders
+              <ShoppingBag className="w-5 h-5 flex-shrink-0" />
+              {!sidebarCollapsed && <span>Orders</span>}
             </button>
 
-            {/* Promo Codes Section */}
+            {/* Categories */}
+            <button
+              onClick={() => {
+                setActiveTab('categories');
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                activeTab === 'categories' 
+                  ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
+                  : 'text-gray-600 hover:bg-pink-50/50'
+              } ${sidebarCollapsed ? 'justify-center' : ''}`}
+              title={sidebarCollapsed ? 'Categories' : ''}
+            >
+              <Tag className="w-5 h-5 flex-shrink-0" />
+              {!sidebarCollapsed && <span>Categories</span>}
+            </button>
+
+            {/* Promo Codes */}
             <button
               onClick={() => {
                 setActiveTab('promo-codes');
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                 activeTab === 'promo-codes' 
                   ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
                   : 'text-gray-600 hover:bg-pink-50/50'
-              }`}
+              } ${sidebarCollapsed ? 'justify-center' : ''}`}
+              title={sidebarCollapsed ? 'Promo Codes' : ''}
             >
-              <Gift className="w-5 h-5" />
-              Promo Codes
+              <Gift className="w-5 h-5 flex-shrink-0" />
+              {!sidebarCollapsed && <span>Promo Codes</span>}
             </button>
 
+            {/* Analytics */}
             <button
               onClick={() => {
                 setActiveTab('analytics');
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                 activeTab === 'analytics' 
                   ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
                   : 'text-gray-600 hover:bg-pink-50/50'
-              }`}
+              } ${sidebarCollapsed ? 'justify-center' : ''}`}
+              title={sidebarCollapsed ? 'Analytics' : ''}
             >
-              <BarChart3 className="w-5 h-5" />
-              Analytics
+              <BarChart3 className="w-5 h-5 flex-shrink-0" />
+              {!sidebarCollapsed && <span>Analytics</span>}
             </button>
+
           </div>
         </nav>
 
@@ -858,10 +912,11 @@ const AdminPanel = () => {
         <div className="absolute bottom-4 left-4 right-4">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}
+            title={sidebarCollapsed ? 'Logout' : ''}
           >
-            <LogOut className="w-5 h-5" />
-            Logout
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            {!sidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </div>
@@ -875,7 +930,7 @@ const AdminPanel = () => {
       )}
 
       {/* Main content */}
-      <div className="lg:ml-64 min-h-screen bg-gradient-to-br from-gray-50 via-pink-50/20 to-rose-50/30">
+      <div className={`transition-all duration-300 min-h-screen bg-gradient-to-br from-gray-50 via-pink-50/20 to-rose-50/30 ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         {/* Header */}
         <header className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-pink-100">
           <div className="px-6 py-4">
@@ -884,7 +939,8 @@ const AdminPanel = () => {
                 {activeTab === 'add-product' ? 'Add Product' : 
                  activeTab === 'product-details' ? 'Product Details' :
                  activeTab === 'edit-product' ? 'Edit Product' :
-                 activeTab === 'promo-codes' ? 'Promo Code Management' : activeTab}
+                 activeTab === 'promo-codes' ? 'Promo Code Management' :
+                 activeTab === 'categories' ? 'Categories Management' : activeTab}
               </h2>
               <div className="flex items-center gap-4">
                 {(activeTab === 'products' || activeTab === 'add-product' || 
@@ -931,6 +987,8 @@ const AdminPanel = () => {
           {activeTab === 'promo-codes' && <Promocodemanager />}
           
           {activeTab === 'analytics' && <Analytics />}
+          
+          {activeTab === 'categories' && <CategoriesPage />}
           
           {activeTab === 'product-details' && (
             selectedProductForDetails ? (

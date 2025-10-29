@@ -206,33 +206,33 @@ export default function Shop() {
       ])
       
       // Process categories
-      if (categoriesData.success) {
-        let filteredCategories = categoriesData.categories.filter(cat => 
-          cat.toLowerCase() !== 'women'
-        )
+      // if (categoriesData.success) {
+      //   let filteredCategories = categoriesData.categories.filter(cat => 
+      //     cat.toLowerCase() !== 'women'
+      //   )
         
-        const allIndex = filteredCategories.indexOf('All')
-        if (allIndex > 0) {
-          filteredCategories.splice(allIndex, 1)
-          filteredCategories.unshift('All')
-        } else if (allIndex === -1) {
-          filteredCategories.unshift('All')
-        }
+      //   const allIndex = filteredCategories.indexOf('All')
+      //   if (allIndex > 0) {
+      //     filteredCategories.splice(allIndex, 1)
+      //     filteredCategories.unshift('All')
+      //   } else if (allIndex === -1) {
+      //     filteredCategories.unshift('All')
+      //   }
         
-        setCategories(filteredCategories)
+      //   setCategories(filteredCategories)
         
-        // Handle URL category
-        const categoryFromUrl = searchParams.get('category')
-        if (categoryFromUrl) {
-          const decodedCategory = decodeURIComponent(categoryFromUrl)
-          if (filteredCategories.includes(decodedCategory)) {
-            setSelectedCategory(decodedCategory)
-          } else {
-            router.replace('/shop')
-            setSelectedCategory('All')
-          }
-        }
-      }
+      //   // Handle URL category
+      //   const categoryFromUrl = searchParams.get('category')
+      //   if (categoryFromUrl) {
+      //     const decodedCategory = decodeURIComponent(categoryFromUrl)
+      //     if (filteredCategories.includes(decodedCategory)) {
+      //       setSelectedCategory(decodedCategory)
+      //     } else {
+      //       router.replace('/shop')
+      //       setSelectedCategory('All')
+      //     }
+      //   }
+      // }
 
       // Process price range
       if (filtersData.success && filtersData.filters.priceRange) {
