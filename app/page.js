@@ -11,6 +11,9 @@ import Newsletter from './components/Newsletter'
 // API Configuration
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
+// Static categories as fallback
+const STATIC_CATEGORIES = ['Dresses', 'Tops', 'Bottoms', 'Accessories', 'Shoes', 'Outerwear', 'Activewear', 'Swimwear'];
+
 // Counter component for animated numbers
 function Counter({ value, duration = 3.5, format = "number" }) {
   const ref = useRef(null)
@@ -59,6 +62,7 @@ export default function Home() {
   // State for dynamic data
   const [featuredProducts, setFeaturedProducts] = useState([])
   const [categories, setCategories] = useState([])
+  const [dynamicCategories, setDynamicCategories] = useState([])
   const [stats, setStats] = useState({
     totalProducts: 0,
     activeProducts: 0,
@@ -73,57 +77,84 @@ export default function Home() {
     fetchAllData()
   }, [])
 
- const fetchAllData = async () => {
-  try {
-    setLoading(true)
-    
-    // Fetch featured products
-    const featuredResponse = await fetch(`${API_BASE}/featured-products?limit=4`)
-    const featuredData = await featuredResponse.json()
-    
-    // If no featured products, fetch recent products
-    let productsToShow = []
-    if (featuredData.success && featuredData.products.length > 0) {
-      productsToShow = featuredData.products
-    } else {
-      // Fallback to recent products
-      const allProductsResponse = await fetch(`${API_BASE}/allproducts?limit=4&sortBy=date&sortOrder=desc`)
-      const allProductsData = await allProductsResponse.json()
-      if (allProductsData.success) {
-        productsToShow = allProductsData.products
-      }
-    }
-    
-    setFeaturedProducts(productsToShow)
-
-    // Fetch categories using the same logic as shop page
-    const categoriesResponse = await fetch(`${API_BASE}/categories`)
-    const categoriesData = await categoriesResponse.json()
-    
-    if (categoriesData.success) {
-      // Filter out 'women' category and 'All' category, same as shop page
-      let filteredCategories = categoriesData.categories.filter(cat => 
-        cat.toLowerCase() !== 'women' && cat.toLowerCase() !== 'all'
-      )
+  const fetchAllData = async () => {
+    try {
+      setLoading(true)
       
-      // Take first 3 categories for home page display
-      setCategories(filteredCategories.slice(0, 3))
-    }
+      // Fetch featured products
+      const featuredResponse = await fetch(`${API_BASE}/featured-products?limit=4`)
+      const featuredData = await featuredResponse.json()
+      
+      // If no featured products, fetch recent products
+      let productsToShow = []
+      if (featuredData.success && featuredData.products.length > 0) {
+        productsToShow = featuredData.products
+      } else {
+        // Fallback to recent products
+        const allProductsResponse = await fetch(`${API_BASE}/allproducts?limit=4&sortBy=date&sortOrder=desc`)
+        const allProductsData = await allProductsResponse.json()
+        if (allProductsData.success) {
+          productsToShow = allProductsData.products
+        }
+      }
+      
+      setFeaturedProducts(productsToShow)
 
-    // Fetch dashboard stats
-    const statsResponse = await fetch(`${API_BASE}/dashboard/stats`)
-    const statsData = await statsResponse.json()
-    if (statsData.success) {
-      setStats(statsData.stats)
-    }
+      // Fetch categories with dynamic + static logic
+      const categoriesResponse = await fetch(`${API_BASE}/categories?active=true`)
+      const categoriesData = await categoriesResponse.json()
+      
+      if (categoriesData.success && categoriesData.categories) {
+        // Extract category names from dynamic categories
+        const dynamicCategoryNames = categoriesData.categories
+          .map(cat => {
+            // Handle both object and string formats
+            if (typeof cat === 'string') return cat;
+            if (cat && typeof cat === 'object' && cat.name) return cat.name;
+            return null;
+          })
+          .filter(name => name && name.toLowerCase() !== 'women' && name.toLowerCase() !== 'all')
+          .sort((a, b) => a.localeCompare(b));
+        
+        setDynamicCategories(dynamicCategoryNames);
+        
+        // Combine dynamic and static categories (avoiding duplicates)
+        const uniqueStaticCategories = STATIC_CATEGORIES.filter(
+          staticCat => !dynamicCategoryNames.includes(staticCat)
+        );
+        
+        // Create combined list for homepage (take first 3)
+        const combinedCategories = [
+          ...dynamicCategoryNames,
+          ...uniqueStaticCategories
+        ];
+        
+        // Take first 6 categories for homepage display
+        setCategories(combinedCategories.slice(0, 6))
+      } else {
+        // Fallback to static categories
+        console.warn('No dynamic categories found, using static categories');
+        setCategories(STATIC_CATEGORIES.slice(0, 6));
+        setDynamicCategories([]);
+      }
 
-  } catch (error) {
-    console.error('Error fetching data:', error)
-    setError('Failed to load data')
-  } finally {
-    setLoading(false)
+      // Fetch dashboard stats
+      const statsResponse = await fetch(`${API_BASE}/dashboard/stats`)
+      const statsData = await statsResponse.json()
+      if (statsData.success) {
+        setStats(statsData.stats)
+      }
+
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      // Fallback to static categories on error
+      setCategories(STATIC_CATEGORIES.slice(0, 6));
+      setDynamicCategories([]);
+      setError('Failed to load some data')
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   // Dynamic stats based on real data
   const dynamicStats = [
@@ -164,7 +195,9 @@ export default function Home() {
     'Accessories': '/assets/shop3.jpeg',
     'Bottoms': '/assets/shop2.jpeg',
     'Shoes': '/assets/shop2.jpeg',
-    'Outerwear': '/assets/shop3.jpeg'
+    'Outerwear': '/assets/shop3.jpeg',
+    'Activewear': '/assets/shop1.avif',
+    'Swimwear': '/assets/shop2.jpeg'
   }
 
   const testimonials = [
@@ -187,33 +220,6 @@ export default function Home() {
       avatar: '/assets/test3.jpeg'
     }
   ]
-
-  // Loading state
-  // if (loading) {
-  //   return (
-  //     <div className="min-h-screen flex items-center justify-center">
-  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
-  //     </div>
-  //   )
-  // }
-
-  // Error state
-  // if (error) {
-  //   return (
-  //     <div className="min-h-screen flex items-center justify-center">
-  //       <div className="text-center">
-  //         <h2 className="text-2xl font-bold text-gray-800 mb-4">Oops! Something went wrong</h2>
-  //         <p className="text-gray-600 mb-4">{error}</p>
-  //         <button 
-  //           onClick={fetchAllData}
-  //           className="btn-primary px-6 py-2"
-  //         >
-  //           Try Again
-  //         </button>
-  //       </div>
-  //     </div>
-  //   )
-  // }
 
   return (
     <div className="min-h-screen">
@@ -305,13 +311,13 @@ export default function Home() {
               
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/shop"> 
-                <motion.button 
-                  className="btn-primary text-lg px-8 py-4"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Shop Collection
-                </motion.button>
+                  <motion.button 
+                    className="btn-primary text-lg px-8 py-4"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Shop Collection
+                  </motion.button>
                 </Link>
                  
                 <motion.button 
@@ -320,9 +326,7 @@ export default function Home() {
                   whileTap={{ scale: 0.95 }}
                 >
                   View Lookbook
-                  
                 </motion.button>
-                
               </div>
               
               <div className="flex items-center space-x-8 pt-8">
@@ -406,22 +410,27 @@ export default function Home() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <p className="text-gray-600 text-lg">No featured products available at the moment.</p>
+              <p className="text-gray-600 text-lg mb-4">No featured products available at the moment.</p>
+              <Link href="/shop">
+                <button className="btn-primary px-6 py-3">
+                  Browse All Products
+                </button>
+              </Link>
             </div>
           )}
           
           <Link href="/shop"> 
-          <motion.div 
-            className="text-center mt-12"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            <button className="btn-primary text-lg px-8 py-4 inline-flex items-center space-x-2">
-              <span>View All Products</span>
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </motion.div>
+            <motion.div 
+              className="text-center mt-12"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              <button className="btn-primary text-lg px-8 py-4 inline-flex items-center space-x-2">
+                <span>View All Products</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </motion.div>
           </Link>
         </div>
       </section>
@@ -455,81 +464,119 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categories Section */}
-    <section className="py-20 bg-gray-50">
-  <div className="container mx-auto px-4">
-    <motion.div 
-      className="text-center mb-16"
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-    >
-      <h2 className="text-4xl font-bold mb-4">Shop by Category</h2>
-      <p className="text-xl text-gray-600">Find exactly what you're looking for</p>
-    </motion.div>
-    
-    {categories.length > 0 ? (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {categories.map((category, index) => {
-          const categoryStats = stats.categoryStats?.find(cat => cat._id === category)
-          const itemCount = categoryStats ? `${categoryStats.count}+ items` : 'View items'
+      {/* Categories Section - Modern Circular Design */}
+      <section className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-4xl font-bold mb-4">Shop by Category</h2>
+            <p className="text-xl text-gray-600">Find exactly what you're looking for</p>
+            
+            {/* Category type indicators */}
+            {/* {dynamicCategories.length > 0 && (
+              <div className="flex justify-center gap-3 mt-4">
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
+                  {dynamicCategories.length} Dynamic
+                </span>
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">
+                  {categories.length - dynamicCategories.filter(cat => categories.includes(cat)).length} Static
+                </span>
+              </div>
+            )} */}
+          </motion.div>
           
-          return (
-            <motion.div 
-              key={category}
-              className="relative group cursor-pointer overflow-hidden rounded-2xl"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              whileHover={{ scale: 1.05 }}
-            >
-              {/* Updated Link to go to shop page with category filter */}
-              <Link href={`/shop?category=${encodeURIComponent(category)}`}>
-                <img 
-                  src={categoryImages[category] || '/assets/shop1.avif'} 
-                  alt={category}
-                  className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-6 left-6 text-white">
-                  <h3 className="text-2xl font-bold mb-2">{category}</h3>
-                  <p className="text-pink-200">{itemCount}</p>
-                </div>
+          {categories.length > 0 ? (
+            <>
+              {/* Circular Category Grid */}
+              <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 max-w-5xl mx-auto">
+                {categories.map((category, index) => {
+                  const categoryStats = stats.categoryStats?.find(cat => cat._id === category)
+                  const itemCount = categoryStats ? categoryStats.count : 0
+                  const isDynamic = dynamicCategories.includes(category)
+                  
+                  return (
+                    <motion.div 
+                      key={category}
+                      className="relative flex flex-col items-center"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.4, delay: index * 0.08 }}
+                    >
+                      <Link href={`/shop?category=${encodeURIComponent(category)}`}>
+                        <motion.div
+                          className="relative group cursor-pointer"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {/* Circle Container */}
+                          <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden shadow-xl ring-4 ring-white group-hover:ring-pink-200 transition-all duration-300">
+                            <img 
+                              src={categoryImages[category] || '/assets/shop1.avif'} 
+                              alt={category}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 group-hover:from-pink-500/40 group-hover:to-purple-500/40 transition-all duration-300" />
+                            
+                            {/* Dynamic Badge */}
+                            {isDynamic && (
+                              <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                                <Sparkles className="w-3 h-3 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Decorative Ring on Hover */}
+                          <div className="absolute inset-0 w-24 h-24 md:w-28 md:h-28 rounded-full border-2 border-pink-400 opacity-0 group-hover:opacity-100 group-hover:scale-125 transition-all duration-300" />
+                        </motion.div>
+                        
+                        {/* Category Name and Count */}
+                        <div className="mt-3 text-center">
+                          <h3 className="text-sm md:text-base font-semibold text-gray-800 group-hover:text-pink-600 transition-colors">
+                            {category}
+                          </h3>
+                          {itemCount > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {itemCount} items
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    </motion.div>
+                  )
+                })}
+              </div>
+              
+              {/* View All Button */}
+              <motion.div 
+                className="text-center mt-12"
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                <Link href="/shop">
+                  <button className="btn-primary text-base px-8 py-3 inline-flex items-center space-x-2 shadow-lg">
+                    <span>Explore All Categories</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </Link>
+              </motion.div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-600 text-lg mb-4">Categories will be displayed here once products are added.</p>
+              <Link href="/shop">
+                <button className="btn-primary px-6 py-3">
+                  Browse All Products
+                </button>
               </Link>
-            </motion.div>
-          )
-        })}
-      </div>
-    ) : (
-      <div className="text-center py-12">
-        <p className="text-gray-600 text-lg">Categories will be displayed here once products are added.</p>
-        {/* Optional: Add a link to shop page */}
-        <Link href="/shop" className="inline-block mt-4">
-          <button className="btn-primary px-6 py-3">
-            Browse All Products
-          </button>
-        </Link>
-      </div>
-    )}
-    
-    {/* Optional: Add "View All Categories" button if you want */}
-    {categories.length > 0 && (
-      <motion.div 
-        className="text-center mt-12"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.3 }}
-      >
-        <Link href="/shop">
-          <button className="btn-secondary text-lg px-8 py-4 inline-flex items-center space-x-2">
-            <span>View All Categories</span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </Link>
-      </motion.div>
-    )}
-  </div>
-</section>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Testimonials */}
       <section className="py-20 bg-white">
@@ -572,7 +619,7 @@ export default function Home() {
       </section>
 
       {/* Newsletter */}
-     <Newsletter />
+      <Newsletter />
       
       <Footer />
     </div>
