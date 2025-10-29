@@ -25,7 +25,8 @@ import {
   RefreshCw,
   ChevronDown,
   Mail,
-  Phone
+  Phone,
+  Trash2
 } from 'lucide-react';
 
 const AdminOrders = () => {
@@ -42,6 +43,10 @@ const AdminOrders = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [notification, setNotification] = useState({ message: '', type: '' });
   const [orderStats, setOrderStats] = useState({});
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, orderId: null });
+  const [deletingOrder, setDeletingOrder] = useState(false);
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -247,6 +252,86 @@ const AdminOrders = () => {
     }
   };
 
+  // Delete order function
+  const deleteOrder = async (orderId) => {
+    try {
+      setDeletingOrder(true);
+      console.log(`Deleting order ${orderId}`);
+      
+      const response = await fetch(`${API_BASE}/admin/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      console.log('Delete response:', data);
+
+      if (data.success) {
+        showNotification('Order deleted successfully', 'success');
+        // Remove order from the list
+        setOrders(prevOrders => prevOrders.filter(order => order._id !== orderId));
+        // Close modal if the deleted order was open
+        if (selectedOrder && selectedOrder._id === orderId) {
+          setShowOrderModal(false);
+          setSelectedOrder(null);
+        }
+        // Refresh stats
+        fetchOrderStats();
+        // Close delete confirmation
+        setDeleteConfirm({ show: false, orderId: null });
+      } else {
+        showNotification(data.message || 'Failed to delete order', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      showNotification('Error deleting order', 'error');
+    } finally {
+      setDeletingOrder(false);
+    }
+  };
+
+  // Delete all orders function
+  const deleteAllOrders = async () => {
+    try {
+      setDeletingAll(true);
+      console.log('Deleting ALL orders');
+      
+      const response = await fetch(`${API_BASE}/admin/orders/delete-all/confirm`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      console.log('Delete all response:', data);
+
+      if (data.success) {
+        showNotification(`Successfully deleted ${data.deletedCount} orders`, 'success');
+        // Clear all orders from the list
+        setOrders([]);
+        // Close modal if open
+        setShowOrderModal(false);
+        setSelectedOrder(null);
+        // Refresh stats
+        fetchOrderStats();
+        // Refresh orders list
+        fetchOrders(1, searchTerm, statusFilter, dateFilter);
+        // Close delete all confirmation
+        setDeleteAllConfirm(false);
+      } else {
+        showNotification(data.message || 'Failed to delete all orders', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting all orders:', error);
+      showNotification('Error deleting all orders', 'error');
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
     console.log('Loading initial data...');
@@ -395,17 +480,28 @@ const AdminOrders = () => {
             <h2 className="text-2xl font-bold text-gray-800">Orders Management</h2>
             <p className="text-gray-600">Manage and track all customer orders</p>
           </div>
-          <button
-            onClick={() => {
-              fetchOrders(currentPage, searchTerm, statusFilter, dateFilter);
-              fetchOrderStats();
-            }}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setDeleteAllConfirm(true)}
+              disabled={loading || orders.length === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={orders.length === 0 ? 'No orders to delete' : 'Delete all orders'}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
+            </button>
+            <button
+              onClick={() => {
+                fetchOrders(currentPage, searchTerm, statusFilter, dateFilter);
+                fetchOrderStats();
+              }}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
@@ -565,13 +661,22 @@ const AdminOrders = () => {
                         <div className="text-sm text-gray-500">{dateTime.time}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => viewOrderDetails(order._id)}
-                          className="text-blue-600 hover:text-blue-900 flex items-center gap-1"
-                        >
-                          <Eye size={16} />
-                          View
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => viewOrderDetails(order._id)}
+                            className="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                          >
+                            <Eye size={16} />
+                            View
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm({ show: true, orderId: order._id })}
+                            className="text-red-600 hover:text-red-900 flex items-center gap-1"
+                          >
+                            <Trash2 size={16} />
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -633,12 +738,21 @@ const AdminOrders = () => {
                   {formatDateTime(selectedOrder.createdAt).date} at {formatDateTime(selectedOrder.createdAt).time}
                 </p>
               </div>
-              <button 
-                onClick={() => setShowOrderModal(false)} 
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={24} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setDeleteConfirm({ show: true, orderId: selectedOrder._id })}
+                  className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Trash2 size={18} />
+                  Delete Order
+                </button>
+                <button 
+                  onClick={() => setShowOrderModal(false)} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
 
             {/* Modal Content */}
@@ -768,6 +882,107 @@ const AdminOrders = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            
+            <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
+              Delete Order?
+            </h3>
+            
+            <p className="text-gray-600 text-center mb-6">
+              Are you sure you want to delete this order? This action cannot be undone.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm({ show: false, orderId: null })}
+                disabled={deletingOrder}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteOrder(deleteConfirm.orderId)}
+                disabled={deletingOrder}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deletingOrder ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete ALL Orders Confirmation Modal */}
+      {deleteAllConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            
+            <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
+              ⚠️ Delete ALL Orders?
+            </h3>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-800 text-sm font-semibold text-center mb-2">
+                EXTREME CAUTION REQUIRED
+              </p>
+              <p className="text-red-700 text-sm text-center">
+                This will permanently delete <span className="font-bold">{totalOrders} order{totalOrders !== 1 ? 's' : ''}</span> from the database.
+              </p>
+            </div>
+            
+            <p className="text-gray-600 text-center mb-6">
+              This action is <span className="font-bold text-red-600">IRREVERSIBLE</span> and will remove all order data permanently. Are you absolutely sure?
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteAllConfirm(false)}
+                disabled={deletingAll}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteAllOrders}
+                disabled={deletingAll}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deletingAll ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    Delete All Orders
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

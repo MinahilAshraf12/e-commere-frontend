@@ -666,172 +666,150 @@ const AdminPanel = () => {
         </button>
       </div>
 
-      {/* Enhanced Collapsible Sidebar - Pink Dreams Theme */}
-      <div className={`fixed inset-y-0 left-0 z-40 bg-gradient-to-br from-white via-pink-50/30 to-rose-50/40 shadow-2xl border-r border-pink-100 transform transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'w-20' : 'w-64'} lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        
-        {/* Header Section */}
-        <div className="p-6 border-b border-pink-100 bg-white/80 backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div className={`flex items-center gap-3 transition-all duration-300 ${sidebarCollapsed ? 'justify-center w-full' : ''}`}>
-              <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group flex-shrink-0">          
-                <div className="relative">
-                  <div className="w-12 h-12 bg-gradient-to-br from-pink-400 via-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-xl">P</span>
-                  </div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-300 to-yellow-400 rounded-full animate-pulse"></div>
+      {/* Modern Sidebar - Pink Dreams Theme */}
+      <div className={`fixed inset-y-0 left-0 z-40 bg-white shadow-2xl border-r border-gray-200 transform transition-all duration-300 ease-in-out ${
+        sidebarCollapsed ? 'w-20' : 'w-72'
+      } lg:translate-x-0 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className={`p-6 border-b border-gray-100 ${sidebarCollapsed ? 'px-3' : 'px-6'}`}>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <span className="text-white text-2xl font-bold">P</span>
                 </div>
-               
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white animate-pulse"></div>
+              </div>
+              {!sidebarCollapsed && (
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-xl font-bold text-gray-800 truncate">Pink Dreams</h1>
+                  <p className="text-xs text-gray-500 font-medium">Admin Panel</p>
+                </div>
+              )}
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+          </div>
+
+          {/* Admin Profile */}
+          {/* {adminData && (
+            <div className={`px-6 py-4 bg-gradient-to-r from-pink-50 to-rose-50 border-b border-gray-100 ${sidebarCollapsed ? 'px-3' : 'px-6'}`}>
+              <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+                <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg flex items-center justify-center">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
                 {!sidebarCollapsed && (
-                  <div>
-                    <h1 className="text-xl font-bold bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 bg-clip-text text-transparent">
-                      Pink Dreams
-                    </h1>
-                    <p className="text-xs text-gray-500">Admin Panel</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Administrator</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{adminData.username || 'super_admin'}</p>
                   </div>
                 )}
-              </Link> 
+              </div>
             </div>
-            
-            {/* Mobile Close Button */}
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-gray-500 hover:text-pink-600 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
+          )} */}
 
-            {/* Desktop Collapse Toggle */}
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:block text-gray-500 hover:text-pink-600 transition-colors"
-            >
-              {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-            </button>
-          </div>
-          
-          {/* Admin Info */}
-          {adminData && !sidebarCollapsed && (
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-pink-100">
-              <Shield className="w-5 h-5 text-pink-500" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">{adminData.name}</p>
-                <span className="text-xs text-gray-500">{adminData.role}</span>
-              </div>
-            </div>
-          )}
-          {adminData && sidebarCollapsed && (
-            <div className="flex justify-center mt-3 pt-3 border-t border-pink-100">
-              <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-rose-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                {adminData.name?.charAt(0).toUpperCase()}
-              </div>
-            </div>
-          )}
-        </div>
-        
-        {/* Navigation */}
-        <nav className="mt-6 flex-1 overflow-y-auto">
-          <div className="px-4 space-y-2">
-            
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
             {/* Dashboard */}
             <button
               onClick={() => {
                 setActiveTab('dashboard');
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                 activeTab === 'dashboard' 
-                  ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
-                  : 'text-gray-600 hover:bg-pink-50/50'
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-200' 
+                  : 'text-gray-700 hover:bg-gray-100'
               } ${sidebarCollapsed ? 'justify-center' : ''}`}
               title={sidebarCollapsed ? 'Dashboard' : ''}
             >
-              <Home className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && <span>Dashboard</span>}
+              <Home className={`w-5 h-5 flex-shrink-0 ${activeTab === 'dashboard' ? '' : 'group-hover:scale-110'} transition-transform`} />
+              {!sidebarCollapsed && <span className="font-medium">Dashboard</span>}
             </button>
 
-            {/* E-commerce Module with Dropdown */}
-            <div className="space-y-1">
+            {/* E-commerce Section */}
+            <div className={sidebarCollapsed ? '' : 'space-y-1'}>
               <button
-                onClick={() => setEcommerceOpen(!ecommerceOpen)}
-                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all ${
-                  ['add-product', 'products', 'product-details', 'edit-product'].includes(activeTab)
-                    ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md'
-                    : 'text-gray-600 hover:bg-pink-50/50'
-                } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                onClick={() => {
+                  if (!sidebarCollapsed) {
+                    setEcommerceOpen(!ecommerceOpen);
+                  } else {
+                    setActiveTab('products');
+                    setSidebarOpen(false);
+                  }
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                  ['products', 'add-product', 'edit-product', 'product-details'].includes(activeTab)
+                    ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-200' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                } ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}
                 title={sidebarCollapsed ? 'E-commerce' : ''}
               >
                 <div className="flex items-center gap-3">
-                  <Store className="w-5 h-5 flex-shrink-0" />
-                  {!sidebarCollapsed && <span>E-commerce</span>}
+                  <Store className={`w-5 h-5 flex-shrink-0 ${['products', 'add-product', 'edit-product', 'product-details'].includes(activeTab) ? '' : 'group-hover:scale-110'} transition-transform`} />
+                  {!sidebarCollapsed && <span className="font-medium">E-commerce</span>}
                 </div>
-                {!sidebarCollapsed && (ecommerceOpen ? (
-                  <ChevronUp className="w-4 h-4 flex-shrink-0" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 flex-shrink-0" />
-                ))}
+                {!sidebarCollapsed && (
+                  ecommerceOpen ? (
+                    <ChevronUp className="w-4 h-4 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                  )
+                )}
               </button>
 
-              {/* E-commerce Dropdown */}
-              {!sidebarCollapsed && (
-                <div className={`ml-4 space-y-1 transition-all duration-200 ${ecommerceOpen ? 'block' : 'hidden'}`}>
-                  <button
-                    onClick={() => {
-                      setActiveTab('add-product');
-                      setSidebarOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                      activeTab === 'add-product' 
-                        ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
-                        : 'text-gray-600 hover:bg-pink-50/50'
-                    }`}
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Product
-                  </button>
-                  
+              {/* E-commerce Submenu */}
+              {!sidebarCollapsed && ecommerceOpen && (
+                <div 
+                  className="ml-6 pl-4 border-l-2 border-pink-200 space-y-1 mt-1 pr-2"
+                >
                   <button
                     onClick={() => {
                       setActiveTab('products');
                       setSidebarOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
                       activeTab === 'products' 
-                        ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
-                        : 'text-gray-600 hover:bg-pink-50/50'
+                        ? 'bg-pink-50 text-pink-700 font-semibold' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
-                    <Package className="w-4 h-4" />
-                    View Products
+                    <Package className="w-4 h-4 flex-shrink-0" />
+                    <span>All Products</span>
                   </button>
-                  
                   <button
                     onClick={() => {
-                      setActiveTab('product-details');
+                      setActiveTab('add-product');
                       setSidebarOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                      activeTab === 'product-details' 
-                        ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
-                        : 'text-gray-600 hover:bg-pink-50/50'
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+                      activeTab === 'add-product' 
+                        ? 'bg-pink-50 text-pink-700 font-semibold' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
-                    <Eye className="w-4 h-4" />
-                    Product Details
+                    <Plus className="w-4 h-4 flex-shrink-0" />
+                    <span>Add Product</span>
                   </button>
-                  
                   <button
                     onClick={() => {
-                      setActiveTab('edit-product');
+                      setActiveTab('categories');
                       setSidebarOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                      activeTab === 'edit-product' 
-                        ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700' 
-                        : 'text-gray-600 hover:bg-pink-50/50'
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+                      activeTab === 'categories' 
+                        ? 'bg-pink-50 text-pink-700 font-semibold' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
-                    <Edit className="w-4 h-4" />
-                    Edit Product
+                    <Tag className="w-4 h-4 flex-shrink-0" />
+                    <span>Categories</span>
                   </button>
                 </div>
               )}
@@ -843,32 +821,15 @@ const AdminPanel = () => {
                 setActiveTab('orders');
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                 activeTab === 'orders' 
-                  ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
-                  : 'text-gray-600 hover:bg-pink-50/50'
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-200' 
+                  : 'text-gray-700 hover:bg-gray-100'
               } ${sidebarCollapsed ? 'justify-center' : ''}`}
               title={sidebarCollapsed ? 'Orders' : ''}
             >
-              <ShoppingBag className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && <span>Orders</span>}
-            </button>
-
-            {/* Categories */}
-            <button
-              onClick={() => {
-                setActiveTab('categories');
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                activeTab === 'categories' 
-                  ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
-                  : 'text-gray-600 hover:bg-pink-50/50'
-              } ${sidebarCollapsed ? 'justify-center' : ''}`}
-              title={sidebarCollapsed ? 'Categories' : ''}
-            >
-              <Tag className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && <span>Categories</span>}
+              <ShoppingBag className={`w-5 h-5 flex-shrink-0 ${activeTab === 'orders' ? '' : 'group-hover:scale-110'} transition-transform`} />
+              {!sidebarCollapsed && <span className="font-medium">Orders</span>}
             </button>
 
             {/* Promo Codes */}
@@ -877,15 +838,15 @@ const AdminPanel = () => {
                 setActiveTab('promo-codes');
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                 activeTab === 'promo-codes' 
-                  ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
-                  : 'text-gray-600 hover:bg-pink-50/50'
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-200' 
+                  : 'text-gray-700 hover:bg-gray-100'
               } ${sidebarCollapsed ? 'justify-center' : ''}`}
               title={sidebarCollapsed ? 'Promo Codes' : ''}
             >
-              <Gift className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && <span>Promo Codes</span>}
+              <Gift className={`w-5 h-5 flex-shrink-0 ${activeTab === 'promo-codes' ? '' : 'group-hover:scale-110'} transition-transform`} />
+              {!sidebarCollapsed && <span className="font-medium">Promo Codes</span>}
             </button>
 
             {/* Analytics */}
@@ -894,33 +855,61 @@ const AdminPanel = () => {
                 setActiveTab('analytics');
                 setSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                 activeTab === 'analytics' 
-                  ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
-                  : 'text-gray-600 hover:bg-pink-50/50'
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-200' 
+                  : 'text-gray-700 hover:bg-gray-100'
               } ${sidebarCollapsed ? 'justify-center' : ''}`}
               title={sidebarCollapsed ? 'Analytics' : ''}
             >
-              <BarChart3 className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && <span>Analytics</span>}
+              <BarChart3 className={`w-5 h-5 flex-shrink-0 ${activeTab === 'analytics' ? '' : 'group-hover:scale-110'} transition-transform`} />
+              {!sidebarCollapsed && <span className="font-medium">Analytics</span>}
+            </button>
+          </nav>
+
+          {/* Bottom Section */}
+          <div className="border-t border-gray-100 p-4 space-y-2 bg-gray-50">
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all duration-200 group ${
+                sidebarCollapsed ? 'justify-center' : ''
+              }`}
+              title={sidebarCollapsed ? 'Logout' : ''}
+            >
+              <LogOut className="w-5 h-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+              {!sidebarCollapsed && <span className="font-medium">Logout</span>}
             </button>
 
+            {/* Toggle Sidebar */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 transition-all duration-200 ${
+                sidebarCollapsed ? 'justify-center' : 'justify-between'
+              }`}
+              title={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              <div className="flex items-center gap-3">
+                {sidebarCollapsed ? (
+                  <ChevronRight className="w-5 h-5 flex-shrink-0" />
+                ) : (
+                  <>
+                    <ChevronLeft className="w-5 ml-28 h-5 flex-shrink-0" />
+                    {/* <span className="font-medium text-sm">Collapse</span> */}
+                  </>
+                )}
+              </div>
+              {/* {!sidebarCollapsed && (
+                <div className="flex items-center gap-1 text-xs text-gray-600 bg-white px-2 py-1 rounded-md shadow-sm">
+                  <span className="font-semibold">Ctrl</span>
+                  <span>+</span>
+                  <span className="font-semibold">B</span>
+                </div>
+              )} */}
+            </button>
           </div>
-        </nav>
-
-        {/* Logout Button at Bottom */}
-        <div className="absolute bottom-4 left-4 right-4">
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}
-            title={sidebarCollapsed ? 'Logout' : ''}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {!sidebarCollapsed && <span>Logout</span>}
-          </button>
         </div>
       </div>
-
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div 
@@ -930,7 +919,7 @@ const AdminPanel = () => {
       )}
 
       {/* Main content */}
-      <div className={`transition-all duration-300 min-h-screen bg-gradient-to-br from-gray-50 via-pink-50/20 to-rose-50/30 ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+      <div className={`transition-all duration-300 min-h-screen bg-gradient-to-br from-gray-50 via-pink-50/20 to-rose-50/30 ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'}`}>
         {/* Header */}
         <header className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-pink-100">
           <div className="px-6 py-4">
@@ -942,7 +931,7 @@ const AdminPanel = () => {
                  activeTab === 'promo-codes' ? 'Promo Code Management' :
                  activeTab === 'categories' ? 'Categories Management' : activeTab}
               </h2>
-              <div className="flex items-center gap-4">
+              {/* <div className="flex items-center gap-4">
                 {(activeTab === 'products' || activeTab === 'add-product' || 
                   activeTab === 'product-details' || activeTab === 'edit-product') && (
                   <button
@@ -963,7 +952,7 @@ const AdminPanel = () => {
                     </span>
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>
           </div>
         </header>
