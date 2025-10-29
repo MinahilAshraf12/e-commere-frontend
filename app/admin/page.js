@@ -51,7 +51,7 @@ import ViewProducts from './components/ViewProducts';
 import ProductDetailsPage from './components/ProductDetails';
 import AdminOrders from './components/AdminOrders';
 import AdminLogin from './components/AdminLogin';
-import PromocodeManager from './components/PromocodeManager';
+import Promocodemanager from './components/Promocodemanager';
 
 const AdminPanel = () => {
   // ALL STATES FIRST - Before any conditional logic
@@ -928,7 +928,7 @@ const AdminPanel = () => {
           
           {activeTab === 'orders' && <AdminOrders />}
           
-          {activeTab === 'promo-codes' && <PromocodeManager />}
+          {activeTab === 'promo-codes' && <Promocodemanager />}
           
           {activeTab === 'analytics' && <Analytics />}
           
