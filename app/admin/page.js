@@ -41,8 +41,7 @@ import {
   Check,
   Loader,
   LogOut,
-  Shield,
-  Gift
+  Shield
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Area, AreaChart } from 'recharts';
 import AddProductPage from './components/AddProduct';
@@ -51,7 +50,6 @@ import ViewProducts from './components/ViewProducts';
 import ProductDetailsPage from './components/ProductDetails';
 import AdminOrders from './components/AdminOrders';
 import AdminLogin from './components/AdminLogin';
-import PromoCodeManager from './components/PromoCodeManager';
 
 const AdminPanel = () => {
   // ALL STATES FIRST - Before any conditional logic
@@ -821,22 +819,6 @@ const AdminPanel = () => {
               Orders
             </button>
 
-            {/* Promo Codes Section */}
-            <button
-              onClick={() => {
-                setActiveTab('promo-codes');
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                activeTab === 'promo-codes' 
-                  ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 border-l-4 border-pink-600 shadow-md' 
-                  : 'text-gray-600 hover:bg-pink-50/50'
-              }`}
-            >
-              <Gift className="w-5 h-5" />
-              Promo Codes
-            </button>
-
             <button
               onClick={() => {
                 setActiveTab('analytics');
@@ -883,8 +865,7 @@ const AdminPanel = () => {
               <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-600 via-pink-500 to-rose-500 bg-clip-text text-transparent capitalize">
                 {activeTab === 'add-product' ? 'Add Product' : 
                  activeTab === 'product-details' ? 'Product Details' :
-                 activeTab === 'edit-product' ? 'Edit Product' :
-                 activeTab === 'promo-codes' ? 'Promo Code Management' : activeTab}
+                 activeTab === 'edit-product' ? 'Edit Product' : activeTab}
               </h2>
               <div className="flex items-center gap-4">
                 {(activeTab === 'products' || activeTab === 'add-product' || 
@@ -927,8 +908,6 @@ const AdminPanel = () => {
           {activeTab === 'add-product' && <AddProductPage />}
           
           {activeTab === 'orders' && <AdminOrders />}
-          
-          {activeTab === 'promo-codes' && <PromoCodeManager />}
           
           {activeTab === 'analytics' && <Analytics />}
           
