@@ -5,10 +5,13 @@ import { motion } from 'framer-motion'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import ProductCard from '../components/ProductCard'
-import { Filter, Search, Grid, List, ChevronDown, Loader2, AlertCircle } from 'lucide-react'
+import { Filter, Search, Grid, List, ChevronDown, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 
 // API Configuration
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+
+// Static categories as fallback
+const STATIC_CATEGORIES = ['All', 'Dresses', 'Tops', 'Bottoms', 'Accessories', 'Shoes', 'Outerwear', 'Activewear', 'Swimwear'];
 
 // Debounce hook - optimized
 function useDebounce(value, delay) {
@@ -34,9 +37,11 @@ export default function Shop() {
   // Product states
   const [allProducts, setAllProducts] = useState([])
   const [categories, setCategories] = useState(['All'])
+  const [dynamicCategories, setDynamicCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [initialDataLoaded, setInitialDataLoaded] = useState(false)
+  const [loadingCategories, setLoadingCategories] = useState(false)
   
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState('All')
@@ -51,7 +56,7 @@ export default function Shop() {
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState('grid')
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(12) // Increased for better performance
+  const [itemsPerPage] = useState(12)
   const [totalProducts, setTotalProducts] = useState(0)
   const [hasMoreProducts, setHasMoreProducts] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -117,7 +122,6 @@ export default function Shop() {
     }
 
     if (hasChanges) {
-      // Delay product fetch to avoid multiple rapid calls
       const timer = setTimeout(() => {
         resetAndFetchProducts()
       }, 100)
@@ -165,7 +169,6 @@ export default function Shop() {
 
     const newUrl = params.toString() ? `/shop?${params.toString()}` : '/shop'
     
-    // Use window.history.pushState for instant URL updates without navigation
     window.history.pushState(null, '', newUrl)
   }, [selectedCategory, searchTerm, sortBy, sortOrder, minPrice, maxPrice, priceRange, initialDataLoaded])
 
@@ -176,7 +179,7 @@ export default function Shop() {
     const timer = setTimeout(() => {
       resetAndFetchProducts()
       updateURL()
-    }, 50) // Very short delay to batch rapid changes
+    }, 50)
     
     return () => clearTimeout(timer)
   }, [selectedCategory, sortBy, sortOrder, minPrice, maxPrice])
@@ -196,7 +199,7 @@ export default function Shop() {
       
       // Parallel API calls for faster loading
       const [categoriesResponse, filtersResponse] = await Promise.all([
-        fetch(`${API_BASE}/categories`),
+        fetch(`${API_BASE}/categories?active=true`),
         fetch(`${API_BASE}/product-filters`)
       ])
       
@@ -205,34 +208,52 @@ export default function Shop() {
         filtersResponse.json()
       ])
       
-      // Process categories
-      // if (categoriesData.success) {
-      //   let filteredCategories = categoriesData.categories.filter(cat => 
-      //     cat.toLowerCase() !== 'women'
-      //   )
+      // Process categories - handle both dynamic and static
+      if (categoriesData.success && categoriesData.categories) {
+        // Extract category names from dynamic categories
+        const dynamicCategoryNames = categoriesData.categories
+          .map(cat => {
+            // Handle both object and string formats
+            if (typeof cat === 'string') return cat;
+            if (cat && typeof cat === 'object' && cat.name) return cat.name;
+            return null;
+          })
+          .filter(name => name && name.toLowerCase() !== 'women')
+          .sort((a, b) => a.localeCompare(b));
         
-      //   const allIndex = filteredCategories.indexOf('All')
-      //   if (allIndex > 0) {
-      //     filteredCategories.splice(allIndex, 1)
-      //     filteredCategories.unshift('All')
-      //   } else if (allIndex === -1) {
-      //     filteredCategories.unshift('All')
-      //   }
+        setDynamicCategories(dynamicCategoryNames);
         
-      //   setCategories(filteredCategories)
+        // Combine dynamic and static categories (avoiding duplicates)
+        const uniqueStaticCategories = STATIC_CATEGORIES.filter(
+          staticCat => !dynamicCategoryNames.includes(staticCat)
+        );
         
-      //   // Handle URL category
-      //   const categoryFromUrl = searchParams.get('category')
-      //   if (categoryFromUrl) {
-      //     const decodedCategory = decodeURIComponent(categoryFromUrl)
-      //     if (filteredCategories.includes(decodedCategory)) {
-      //       setSelectedCategory(decodedCategory)
-      //     } else {
-      //       router.replace('/shop')
-      //       setSelectedCategory('All')
-      //     }
-      //   }
-      // }
+        // Create combined list: All first, then dynamic, then unique static
+        const combinedCategories = [
+          'All',
+          ...dynamicCategoryNames,
+          ...uniqueStaticCategories.filter(cat => cat !== 'All')
+        ];
+        
+        setCategories(combinedCategories);
+        
+        // Handle URL category
+        const categoryFromUrl = searchParams.get('category')
+        if (categoryFromUrl) {
+          const decodedCategory = decodeURIComponent(categoryFromUrl)
+          if (combinedCategories.includes(decodedCategory)) {
+            setSelectedCategory(decodedCategory)
+          } else {
+            router.replace('/shop')
+            setSelectedCategory('All')
+          }
+        }
+      } else {
+        // Fallback to static categories if API fails
+        console.warn('No dynamic categories found, using static categories');
+        setCategories(STATIC_CATEGORIES);
+        setDynamicCategories([]);
+      }
 
       // Process price range
       if (filtersData.success && filtersData.filters.priceRange) {
@@ -252,10 +273,56 @@ export default function Shop() {
       
     } catch (error) {
       console.error('Error fetching initial data:', error)
-      setError('Failed to load initial data')
+      // Fallback to static categories on error
+      setCategories(STATIC_CATEGORIES);
+      setDynamicCategories([]);
+      setError('Failed to load some data, using default categories')
+      setInitialDataLoaded(true)
+    } finally {
       setLoading(false)
     }
   }
+
+  // Refresh categories function
+  const refreshCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const response = await fetch(`${API_BASE}/categories?active=true`);
+      const data = await response.json();
+      
+      if (data.success && data.categories) {
+        const dynamicCategoryNames = data.categories
+          .map(cat => {
+            if (typeof cat === 'string') return cat;
+            if (cat && typeof cat === 'object' && cat.name) return cat.name;
+            return null;
+          })
+          .filter(name => name && name.toLowerCase() !== 'women')
+          .sort((a, b) => a.localeCompare(b));
+        
+        setDynamicCategories(dynamicCategoryNames);
+        
+        const uniqueStaticCategories = STATIC_CATEGORIES.filter(
+          staticCat => !dynamicCategoryNames.includes(staticCat)
+        );
+        
+        const combinedCategories = [
+          'All',
+          ...dynamicCategoryNames,
+          ...uniqueStaticCategories.filter(cat => cat !== 'All')
+        ];
+        
+        setCategories(combinedCategories);
+        
+        alert('Categories refreshed successfully!');
+      }
+    } catch (error) {
+      console.error('Error refreshing categories:', error);
+      alert('Failed to refresh categories');
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
 
   const fetchProducts = async (page = 1, isLoadMore = false) => {
     try {
@@ -272,7 +339,6 @@ export default function Shop() {
         sortOrder: sortOrder
       })
 
-      // Add optional parameters
       if (debouncedSearchTerm.trim()) {
         params.append('search', debouncedSearchTerm.trim())
       }
@@ -329,7 +395,6 @@ export default function Shop() {
     fetchProducts(1, false)
   }, [selectedCategory, sortBy, sortOrder, minPrice, maxPrice, debouncedSearchTerm])
 
-  // Optimized handlers
   const handleCategoryFilter = useCallback((category) => {
     if (category !== selectedCategory) {
       setSelectedCategory(category)
@@ -378,7 +443,6 @@ export default function Shop() {
     setAllProducts([])
     setHasMoreProducts(false)
     
-    // Clear URL without navigation
     window.history.pushState(null, '', '/shop')
     
     setTimeout(() => {
@@ -386,7 +450,6 @@ export default function Shop() {
     }, 50)
   }, [priceRange])
 
-  // Memoized category display name
   const categoryDisplayName = useMemo(() => {
     return selectedCategory === 'All' ? 'Our Collection' : selectedCategory
   }, [selectedCategory])
@@ -408,7 +471,7 @@ export default function Shop() {
   }
 
   // Error state
-  if (error && allProducts.length === 0) {
+  if (error && allProducts.length === 0 && !categories.length) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
@@ -488,21 +551,52 @@ export default function Shop() {
 
               {/* Categories */}
               <div className="bg-white rounded-xl p-6 shadow-lg">
-                <h3 className="text-lg font-semibold mb-4">Categories</h3>
-                <div className="space-y-2">
-                  {categories.map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => handleCategoryFilter(category)}
-                      className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                        selectedCategory === category
-                          ? 'bg-pink-100 text-pink-700 font-semibold'
-                          : 'hover:bg-gray-50'
-                      }`}
-                    >
-                      {category}
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Categories</h3>
+                  <button
+                    onClick={refreshCategories}
+                    disabled={loadingCategories}
+                    className="text-pink-600 hover:text-pink-800 disabled:opacity-50"
+                    title="Refresh categories"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loadingCategories ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+                
+                {/* Category Stats */}
+                {/* {dynamicCategories.length > 0 && (
+                  <div className="mb-3 flex gap-2 text-xs">
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                      {dynamicCategories.length} Dynamic
+                    </span>
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                      {categories.length - dynamicCategories.length - 1} Static
+                    </span>
+                  </div>
+                )} */}
+                
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {categories.map((category) => {
+                    const isDynamic = dynamicCategories.includes(category);
+                    return (
+                      <button
+                        key={category}
+                        onClick={() => handleCategoryFilter(category)}
+                        className={`w-full text-left p-3 rounded-lg transition-all duration-200 flex items-center justify-between ${
+                          selectedCategory === category
+                            ? 'bg-pink-100 text-pink-700 font-semibold'
+                            : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <span>{category}</span>
+                        {isDynamic && category !== 'All' && (
+                          <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full">
+                            New
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

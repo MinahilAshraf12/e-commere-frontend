@@ -3,11 +3,17 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
   AlertCircle, Check, Loader, FileSpreadsheet, Download, FileUp, RefreshCw } from 'lucide-react';
 
 
- // Add Product Page Component with Dynamic Categories
+ // Add Product Page Component with Dynamic + Static Categories
   const AddProductPage = () => { 
+    // Static categories (fallback/default)
+    const staticCategories = ['Dresses', 'Tops', 'Bottoms', 'Accessories', 'Shoes', 'Outerwear', 'Activewear', 'Swimwear'];
+    
     // Dynamic categories from backend
-    const [categories, setCategories] = useState([]);
+    const [dynamicCategories, setDynamicCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
+    
+    // Combined categories (dynamic + static)
+    const [allCategories, setAllCategories] = useState([]);
   
   // Enhanced Add Product States
   const [uploadProgress, setUploadProgress] = useState({});
@@ -24,7 +30,7 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
   const [newProduct, setNewProduct] = useState({
     // Basic Information
     name: '',
-    category: '', // Will be set to first active category
+    category: '',
     new_price: '',
     old_price: '',
     brand: '',
@@ -74,7 +80,7 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-  // Fetch active categories from backend
+  // Fetch active categories from backend and merge with static
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -83,29 +89,63 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
         const data = await response.json();
         
         if (data.success && data.categories && data.categories.length > 0) {
-          // Sort categories by order and name
-          const sortedCategories = data.categories.sort((a, b) => {
+          // Sort dynamic categories by order and name
+          const sortedDynamicCategories = data.categories.sort((a, b) => {
             if (a.order !== b.order) return a.order - b.order;
             return a.name.localeCompare(b.name);
           });
           
-          setCategories(sortedCategories);
+          setDynamicCategories(sortedDynamicCategories);
+          
+          // Extract category names from dynamic categories
+          const dynamicCategoryNames = sortedDynamicCategories.map(cat => cat.name);
+          
+          // Filter static categories to avoid duplicates
+          const uniqueStaticCategories = staticCategories.filter(
+            staticCat => !dynamicCategoryNames.includes(staticCat)
+          );
+          
+          // Combine: Dynamic categories first, then unique static categories
+          const combined = [
+            ...dynamicCategoryNames,
+            ...uniqueStaticCategories
+          ];
+          
+          setAllCategories(combined);
           
           // Set first category as default if product category is empty
-          if (!newProduct.category && sortedCategories.length > 0) {
+          if (!newProduct.category && combined.length > 0) {
             setNewProduct(prev => ({
               ...prev,
-              category: sortedCategories[0].name
+              category: combined[0]
             }));
           }
         } else {
-          // If no categories found, show alert
-          console.warn('No active categories found');
-          setCategories([]);
+          // If no dynamic categories, use only static categories
+          console.warn('No active categories found from backend, using static categories');
+          setAllCategories(staticCategories);
+          setDynamicCategories([]);
+          
+          if (!newProduct.category) {
+            setNewProduct(prev => ({
+              ...prev,
+              category: staticCategories[0]
+            }));
+          }
         }
       } catch (error) {
         console.error('Error fetching categories:', error);
-        alert('Failed to load categories. Please refresh the page.');
+        // On error, fallback to static categories
+        console.log('Using static categories as fallback');
+        setAllCategories(staticCategories);
+        setDynamicCategories([]);
+        
+        if (!newProduct.category) {
+          setNewProduct(prev => ({
+            ...prev,
+            category: staticCategories[0]
+          }));
+        }
       } finally {
         setLoadingCategories(false);
       }
@@ -122,16 +162,26 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
       const data = await response.json();
       
       if (data.success && data.categories) {
-        const sortedCategories = data.categories.sort((a, b) => {
+        const sortedDynamicCategories = data.categories.sort((a, b) => {
           if (a.order !== b.order) return a.order - b.order;
           return a.name.localeCompare(b.name);
         });
-        setCategories(sortedCategories);
+        
+        setDynamicCategories(sortedDynamicCategories);
+        
+        const dynamicCategoryNames = sortedDynamicCategories.map(cat => cat.name);
+        const uniqueStaticCategories = staticCategories.filter(
+          staticCat => !dynamicCategoryNames.includes(staticCat)
+        );
+        
+        const combined = [...dynamicCategoryNames, ...uniqueStaticCategories];
+        setAllCategories(combined);
+        
         alert('Categories refreshed successfully!');
       }
     } catch (error) {
       console.error('Error refreshing categories:', error);
-      alert('Failed to refresh categories');
+      alert('Failed to refresh categories. Using cached categories.');
     } finally {
       setLoadingCategories(false);
     }
@@ -151,10 +201,10 @@ import { Package, DollarSign, ImageIcon, Upload, Star, X, Globe, Settings, Save,
 
   // Download Template
   const downloadTemplate = useCallback(() => {
-    const categoryNames = categories.map(cat => cat.name).join(', ');
+    const categoryNames = allCategories.join(', ');
     const template = `name,category,new_price,old_price,brand,sku,description,short_description,stock_quantity,available,featured
-"Example Dress","${categories[0]?.name || 'Dresses'}","99.99","149.99","Brand Name","SKU-001","Full description","Short description","100","true","false"
-"Another Product","${categories[1]?.name || 'Tops'}","49.99","79.99","Brand","SKU-002","Description here","Short desc","50","true","true"
+"Example Dress","${allCategories[0] || 'Dresses'}","99.99","149.99","Brand Name","SKU-001","Full description","Short description","100","true","false"
+"Another Product","${allCategories[1] || 'Tops'}","49.99","79.99","Brand","SKU-002","Description here","Short desc","50","true","true"
 
 Available Categories: ${categoryNames}`;
     
@@ -167,7 +217,7 @@ Available Categories: ${categoryNames}`;
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-  }, [categories]);
+  }, [allCategories]);
 
   // Bulk Upload Submit
   const handleBulkUpload = useCallback(async () => {
@@ -387,7 +437,7 @@ Available Categories: ${categoryNames}`;
         // Reset form
         setNewProduct({
           name: '',
-          category: categories.length > 0 ? categories[0].name : '',
+          category: allCategories.length > 0 ? allCategories[0] : '',
           new_price: '',
           old_price: '',
           brand: '',
@@ -432,7 +482,7 @@ Available Categories: ${categoryNames}`;
     } finally {
       setSaving(false);
     }
-  }, [newProduct, API_BASE, categories]);
+  }, [newProduct, API_BASE, allCategories]);
 
   // Handle image selection
   const handleImageSelect = useCallback(async (e) => {
@@ -492,6 +542,24 @@ Available Categories: ${categoryNames}`;
               </button>
             </div>
           </div>
+          
+          {/* Categories Info */}
+          {!loadingCategories && (
+            <div className="mt-4 flex flex-wrap gap-2 items-center text-sm text-gray-600">
+              <span className="font-medium">Available Categories:</span>
+              {dynamicCategories.length > 0 && (
+                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                  {dynamicCategories.length} Dynamic
+                </span>
+              )}
+              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                {staticCategories.length} Static
+              </span>
+              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+                Total: {allCategories.length}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Bulk Upload Interface */}
@@ -511,19 +579,16 @@ Available Categories: ${categoryNames}`;
                   <div className="flex-1">
                     <h3 className="font-semibold text-blue-900 mb-2">Download Template First</h3>
                     <p className="text-blue-800 text-sm mb-3">
-                      Download our template file to see the correct format and available categories
+                      Download our template file to see the correct format and all available categories (dynamic + static)
                     </p>
                     <button
                       onClick={downloadTemplate}
-                      disabled={categories.length === 0}
+                      disabled={allCategories.length === 0}
                       className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       <Download className="w-4 h-4" />
                       <span>Download CSV Template</span>
                     </button>
-                    {categories.length === 0 && (
-                      <p className="text-red-600 text-sm mt-2">Please add categories first before uploading products</p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -536,11 +601,10 @@ Available Categories: ${categoryNames}`;
                   onChange={handleBulkFileSelect}
                   className="hidden"
                   id="bulk-file-input"
-                  disabled={categories.length === 0}
                 />
                 <label
                   htmlFor="bulk-file-input"
-                  className={`cursor-pointer ${categories.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className="cursor-pointer"
                 >
                   <Upload className="w-12 h-12 text-pink-500 mx-auto mb-3" />
                   <p className="text-lg font-medium text-gray-900 mb-1">
@@ -555,7 +619,7 @@ Available Categories: ${categoryNames}`;
               {/* Upload Button */}
               <button
                 onClick={handleBulkUpload}
-                disabled={!bulkFile || bulkUploading || categories.length === 0}
+                disabled={!bulkFile || bulkUploading}
                 className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl hover:from-pink-600 hover:to-rose-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg text-lg font-medium"
               >
                 {bulkUploading ? (
@@ -647,7 +711,7 @@ Available Categories: ${categoryNames}`;
                     </div>
                     
                     <div>
-                      <label className=" text-sm font-medium text-gray-700 mb-2 flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700 mb-2 flex items-center justify-between">
                         <span>
                           Category <span className="text-red-500">*</span>
                         </span>
@@ -668,12 +732,6 @@ Available Categories: ${categoryNames}`;
                           <Loader className="w-5 h-5 animate-spin text-pink-600 mr-2" />
                           <span className="text-gray-600">Loading categories...</span>
                         </div>
-                      ) : categories.length === 0 ? (
-                        <div className="w-full px-4 py-3 border border-red-200 rounded-lg bg-red-50">
-                          <p className="text-red-600 text-sm">
-                            No active categories found. Please add categories first from the Categories page.
-                          </p>
-                        </div>
                       ) : (
                         <select
                           value={newProduct.category}
@@ -682,17 +740,47 @@ Available Categories: ${categoryNames}`;
                           required
                         >
                           <option value="">Select a category</option>
-                          {categories.map((cat) => (
-                            <option key={cat._id} value={cat.name}>
-                              {cat.name}
-                            </option>
-                          ))}
+                          
+                          {/* Dynamic Categories */}
+                          {dynamicCategories.length > 0 && (
+                            <optgroup label="📱 Dynamic Categories (from Backend)">
+                              {dynamicCategories.map((cat) => (
+                                <option key={cat._id} value={cat.name}>
+                                  {cat.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          
+                          {/* Static Categories (excluding duplicates) */}
+                          {staticCategories.filter(
+                            staticCat => !dynamicCategories.some(dynCat => dynCat.name === staticCat)
+                          ).length > 0 && (
+                            <optgroup label="📦 Static Categories">
+                              {staticCategories
+                                .filter(staticCat => !dynamicCategories.some(dynCat => dynCat.name === staticCat))
+                                .map((cat) => (
+                                  <option key={cat} value={cat}>
+                                    {cat}
+                                  </option>
+                                ))}
+                            </optgroup>
+                          )}
                         </select>
                       )}
                       
-                      {!loadingCategories && categories.length > 0 && (
+                      {!loadingCategories && (
                         <p className="text-xs text-gray-500 mt-1">
-                          {categories.length} active {categories.length === 1 ? 'category' : 'categories'} available
+                          {dynamicCategories.length > 0 && (
+                            <span className="text-green-600 font-medium">{dynamicCategories.length} dynamic</span>
+                          )}
+                          {dynamicCategories.length > 0 && staticCategories.filter(s => !dynamicCategories.some(d => d.name === s)).length > 0 && ' + '}
+                          {staticCategories.filter(s => !dynamicCategories.some(d => d.name === s)).length > 0 && (
+                            <span className="text-blue-600 font-medium">
+                              {staticCategories.filter(s => !dynamicCategories.some(d => d.name === s)).length} static
+                            </span>
+                          )}
+                          {' '}= {allCategories.length} total categories available
                         </p>
                       )}
                     </div>
@@ -1209,7 +1297,7 @@ Available Categories: ${categoryNames}`;
               </button>
               <button
                 type="submit"
-                disabled={saving || !newProduct.name || !newProduct.new_price || !newProduct.category || categories.length === 0}
+                disabled={saving || !newProduct.name || !newProduct.new_price || !newProduct.category}
                 className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
               >
                 {saving ? (
