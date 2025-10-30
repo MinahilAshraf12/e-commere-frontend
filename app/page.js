@@ -12,7 +12,7 @@ import Newsletter from './components/Newsletter'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
 // Static categories as fallback
-const STATIC_CATEGORIES = ['Dresses', 'Tops', 'Bottoms', 'Accessories', 'Shoes', 'Outerwear', 'Activewear', 'Swimwear'];
+const STATIC_CATEGORIES = ['Dresses', 'Tops', 'Bottoms', 'Accessories', 'Shoes'];
 
 // Counter component for animated numbers
 function Counter({ value, duration = 3.5, format = "number" }) {
@@ -191,10 +191,10 @@ export default function Home() {
   // Category images mapping (you can replace these with actual images from your backend)
   const categoryImages = {
     'Dresses': '/assets/shop1.avif',
-    'Tops': '/assets/shop2.jpeg', 
-    'Accessories': '/assets/shop3.jpeg',
-    'Bottoms': '/assets/shop2.jpeg',
-    'Shoes': '/assets/shop2.jpeg',
+    'Tops': '/assets/product_4.png', 
+    'Accessories': '/assets/shop2.jpeg',
+    'Bottoms': '/assets/prod-5.jpeg',
+    'Shoes': '/assets/shop3.jpeg',
     'Outerwear': '/assets/shop3.jpeg',
     'Activewear': '/assets/shop1.avif',
     'Swimwear': '/assets/shop2.jpeg'
