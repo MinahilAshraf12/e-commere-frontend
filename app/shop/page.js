@@ -11,7 +11,7 @@ import { Filter, Search, Grid, List, ChevronDown, Loader2, AlertCircle, RefreshC
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
 // Static categories as fallback
-const STATIC_CATEGORIES = ['All', 'Dresses', 'Tops', 'Bottoms', 'Accessories', 'Shoes', 'Outerwear', 'Activewear', 'Swimwear'];
+const STATIC_CATEGORIES = ['All',  'Tops', 'Bottoms', 'Accessories', 'Shoes', 'Outerwear', 'Activewear', 'Swimwear'];
 
 // Debounce hook - optimized
 function useDebounce(value, delay) {
