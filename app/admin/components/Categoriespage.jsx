@@ -13,6 +13,7 @@ import {
   Loader, 
   Tag,
   ImageIcon,
+  Upload,
   Grid,
   List,
   ChevronUp,
@@ -28,6 +29,8 @@ const CategoriesPage = () => {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -87,12 +90,70 @@ const CategoriesPage = () => {
     fetchCategories();
   }, [fetchCategories]);
 
+  // Handle image upload
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a valid image file (JPEG, PNG, WEBP, or GIF)');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingImage(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('categoryImage', file);
+
+      const response = await fetch(`${API_BASE}/upload/category-image`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setCategoryForm(prev => ({
+          ...prev,
+          image: data.imageUrl
+        }));
+        setImagePreview(data.imageUrl);
+        console.log('✅ Image uploaded:', data.imageUrl);
+      } else {
+        alert(data.message || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   // Handle form input change
   const handleFormChange = (field, value) => {
     setCategoryForm(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  // Remove uploaded image
+  const handleRemoveImage = () => {
+    setCategoryForm(prev => ({
+      ...prev,
+      image: ''
+    }));
+    setImagePreview(null);
   };
 
   // Reset form
@@ -107,6 +168,7 @@ const CategoriesPage = () => {
       metaTitle: '',
       metaDescription: ''
     });
+    setImagePreview(null);
     setIsAddingCategory(false);
     setEditingCategory(null);
   };
@@ -195,6 +257,7 @@ const CategoriesPage = () => {
       metaTitle: category.metaTitle || '',
       metaDescription: category.metaDescription || ''
     });
+    setImagePreview(category.image || null);
     setEditingCategory(category);
     setIsAddingCategory(true);
   };
@@ -221,7 +284,7 @@ const CategoriesPage = () => {
 
   // Handle delete category
   const handleDeleteCategory = async (categoryId, categoryName) => {
-    if (!confirm(`Are you sure you want to delete "${categoryName}"? This action cannot be undone.`)) {
+    if (!window.confirm(`Are you sure you want to delete "${categoryName}"? This action cannot be undone.`)) {
       return;
     }
 
@@ -244,27 +307,26 @@ const CategoriesPage = () => {
     }
   };
 
-  // Filter categories based on search
-  const filteredCategories = categories.filter(category =>
-    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    category.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter categories
+  const filteredCategories = categories.filter(category => {
+    const matchesSearch = category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         category.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesActive = !showActiveOnly || category.isActive;
+    return matchesSearch && matchesActive;
+  });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50 py-8 px-4">
       <div className="max-w-7xl mx-auto">
-        
         {/* Header */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6 border border-pink-100">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent flex items-center">
-                <Tag className="w-8 h-8 mr-3 text-pink-600" />
-                Categories Management
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-2">
+                Category Management
               </h1>
-              <p className="text-gray-600 mt-1">Manage your product categories</p>
+              <p className="text-gray-600">Organize your product categories</p>
             </div>
-            
             <button
               onClick={() => setIsAddingCategory(true)}
               className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all shadow-lg"
@@ -275,34 +337,34 @@ const CategoriesPage = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-pink-100 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-600 text-sm font-medium">Total Categories</p>
-                  <p className="text-3xl font-bold text-blue-700 mt-1">{stats.total}</p>
+                  <p className="text-gray-600 text-sm">Total Categories</p>
+                  <p className="text-3xl font-bold text-pink-600">{stats.total}</p>
                 </div>
-                <Grid className="w-10 h-10 text-blue-500" />
+                <Package className="w-12 h-12 text-pink-400" />
               </div>
             </div>
-
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+            
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-green-100 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-600 text-sm font-medium">Active Categories</p>
-                  <p className="text-3xl font-bold text-green-700 mt-1">{stats.active}</p>
+                  <p className="text-gray-600 text-sm">Active</p>
+                  <p className="text-3xl font-bold text-green-600">{stats.active}</p>
                 </div>
-                <Eye className="w-10 h-10 text-green-500" />
+                <Eye className="w-12 h-12 text-green-400" />
               </div>
             </div>
-
-            <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 border border-red-200">
+            
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-red-100 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-red-600 text-sm font-medium">Inactive Categories</p>
-                  <p className="text-3xl font-bold text-red-700 mt-1">{stats.inactive}</p>
+                  <p className="text-gray-600 text-sm">Inactive</p>
+                  <p className="text-3xl font-bold text-red-600">{stats.inactive}</p>
                 </div>
-                <EyeOff className="w-10 h-10 text-red-500" />
+                <EyeOff className="w-12 h-12 text-red-400" />
               </div>
             </div>
           </div>
@@ -310,36 +372,32 @@ const CategoriesPage = () => {
 
         {/* Add/Edit Category Form */}
         {isAddingCategory && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-gradient-to-r from-pink-500 to-rose-500 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold flex items-center">
-                    <Tag className="w-6 h-6 mr-2" />
-                    {editingCategory ? 'Edit Category' : 'Add New Category'}
-                  </h2>
-                  <button
-                    onClick={resetForm}
-                    className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-gradient-to-r from-pink-500 to-rose-500 text-white p-6 flex items-center justify-between rounded-t-2xl">
+                <h2 className="text-2xl font-bold">
+                  {editingCategory ? 'Edit Category' : 'Add New Category'}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-all"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
 
               <form onSubmit={editingCategory ? handleUpdateCategory : handleCreateCategory} className="p-6 space-y-6">
-                
                 {/* Category Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category Name <span className="text-red-500">*</span>
+                    Category Name *
                   </label>
                   <input
                     type="text"
                     value={categoryForm.name}
                     onChange={(e) => handleFormChange('name', e.target.value)}
                     className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                    placeholder="Enter category name"
+                    placeholder="e.g., Dresses, Tops, Accessories"
                     required
                   />
                 </div>
@@ -354,46 +412,77 @@ const CategoriesPage = () => {
                     onChange={(e) => handleFormChange('description', e.target.value)}
                     rows="3"
                     className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                    placeholder="Enter category description"
+                    placeholder="Category description..."
                   />
                 </div>
 
-                {/* Image URL */}
+                {/* Image Upload Section */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <ImageIcon className="w-4 h-4 inline mr-2" />
-                    Image URL
+                    Category Image
                   </label>
-                  <input
-                    type="url"
-                    value={categoryForm.image}
-                    onChange={(e) => handleFormChange('image', e.target.value)}
-                    className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  {categoryForm.image && (
-                    <div className="mt-2">
+                  
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <div className="mb-4 relative">
                       <img 
-                        src={categoryForm.image} 
-                        alt="Preview" 
-                        className="w-32 h-32 object-cover rounded-lg border-2 border-pink-200"
-                        onError={(e) => e.target.style.display = 'none'}
+                        src={imagePreview} 
+                        alt="Category preview"
+                        className="w-full h-48 object-cover rounded-lg border-2 border-pink-200"
                       />
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all shadow-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   )}
+
+                  {/* Upload Button */}
+                  <div className="flex items-center space-x-4">
+                    <label className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        disabled={uploadingImage}
+                      />
+                      <div className={`flex items-center justify-center space-x-2 px-4 py-3 border-2 border-dashed border-pink-300 rounded-lg cursor-pointer hover:border-pink-500 hover:bg-pink-50 transition-all ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        {uploadingImage ? (
+                          <>
+                            <Loader className="w-5 h-5 animate-spin text-pink-600" />
+                            <span className="text-pink-600">Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-5 h-5 text-pink-600" />
+                            <span className="text-pink-600">
+                              {imagePreview ? 'Change Image' : 'Upload Image'}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Recommended: 400x400px, Max 5MB (JPEG, PNG, WEBP, GIF)
+                  </p>
                 </div>
 
-                {/* Icon Name */}
+                {/* Icon */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Icon Name (Optional)
+                    Icon Class (Optional)
                   </label>
                   <input
                     type="text"
                     value={categoryForm.icon}
                     onChange={(e) => handleFormChange('icon', e.target.value)}
                     className="w-full px-4 py-3 border border-pink-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all"
-                    placeholder="e.g., shirt, dress, shoe"
+                    placeholder="e.g., fa-dress, lucide-shirt"
                   />
                 </div>
 
@@ -450,7 +539,7 @@ const CategoriesPage = () => {
                   </button>
                   <button
                     type="submit"
-                    disabled={saving}
+                    disabled={saving || uploadingImage}
                     className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
                   >
                     {saving ? (
